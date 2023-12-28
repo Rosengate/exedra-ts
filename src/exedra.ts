@@ -33,11 +33,6 @@ export default class Exedra {
     }
 
     handle(controller: any) : RoutingMeta {
-        // const group: RoutingGroup = {
-        //     middlewares: [],
-        //     prefix: "",
-        //     routes: []
-        // }
         const routing = getRoutingMeta(controller);
 
         const router = express.Router({mergeParams: true});
@@ -62,23 +57,23 @@ export default class Exedra {
                     handler.handle(router, routing, methodMeta);
             }
 
-            // by prefixes
-            if (method.indexOf('group') === 0) {
-                methodMeta.type = 'group';
-            } else if (method.indexOf('setup') === 0) {
-                methodMeta.type = 'setup';
-            }
-
-
-
-            if (methodMeta.type == 'group')
-                this.handleGroup(router, routing, methodMeta);
-            else if (methodMeta.type == 'setup')
-                this.handleSetup(router, routing, methodMeta);
-            else if (methodMeta.type == 'route')
-                this.handleRoute(router, routing, methodMeta);
-            else if (methodMeta.type == 'middleware')
-                this.handleMiddleware(router, routing, methodMeta);
+            // // by prefixes
+            // if (method.indexOf('group') === 0) {
+            //     methodMeta.type = 'group';
+            // } else if (method.indexOf('setup') === 0) {
+            //     methodMeta.type = 'setup';
+            // }
+            //
+            //
+            //
+            // if (methodMeta.type == 'group')
+            //     this.handleGroup(router, routing, methodMeta);
+            // else if (methodMeta.type == 'setup')
+            //     this.handleSetup(router, routing, methodMeta);
+            // else if (methodMeta.type == 'route')
+            //     this.handleRoute(router, routing, methodMeta);
+            // else if (methodMeta.type == 'middleware')
+            //     this.handleMiddleware(router, routing, methodMeta);
         }
 
         // const c = express.Router({mergeParams: true});
@@ -91,35 +86,35 @@ export default class Exedra {
         return routing;
     }
 
-    handleMiddleware(router: Router, routing: RoutingMeta, methodMeta: MethodMeta) {
-        router.use((req, next) => methodMeta.callable(req, next));
-    }
-
-    handleSetup(router: Router, routing: RoutingMeta, methodMeta: MethodMeta) {
-        methodMeta.callable(router);
-    }
-
-    handleRoute(router: Router, routing: RoutingMeta, methodMeta: MethodMeta) {
-        if (!methodMeta.method) {
-            return;
-        }
-
-        router[methodMeta.method](methodMeta.path, (req, res) => methodMeta.callable.apply(routing.controller, [req, res]));
-    }
-
-    handleGroup(router: Router, routing: RoutingMeta, methodMeta: MethodMeta) {
-        const child = methodMeta.callable();
-        // const path = '';
-
-        const childRouting = this.handle(child);
-
-        // const r = express.Router({mergeParams: true})
-        //
-        // r.get('/he', () => {
-        //
-        // })
-        //
-        // router.use('/huh', r);
-        router.use(childRouting.prefix, childRouting.router);
-    }
+    // handleMiddleware(router: Router, routing: RoutingMeta, methodMeta: MethodMeta) {
+    //     router.use((req, next) => methodMeta.callable(req, next));
+    // }
+    //
+    // handleSetup(router: Router, routing: RoutingMeta, methodMeta: MethodMeta) {
+    //     methodMeta.callable(router);
+    // }
+    //
+    // handleRoute(router: Router, routing: RoutingMeta, methodMeta: MethodMeta) {
+    //     if (!methodMeta.method) {
+    //         return;
+    //     }
+    //
+    //     router[methodMeta.method](methodMeta.path, (req, res) => methodMeta.callable.apply(routing.controller, [req, res]));
+    // }
+    //
+    // handleGroup(router: Router, routing: RoutingMeta, methodMeta: MethodMeta) {
+    //     const child = methodMeta.callable();
+    //     // const path = '';
+    //
+    //     const childRouting = this.handle(child);
+    //
+    //     // const r = express.Router({mergeParams: true})
+    //     //
+    //     // r.get('/he', () => {
+    //     //
+    //     // })
+    //     //
+    //     // router.use('/huh', r);
+    //     router.use(childRouting.prefix, childRouting.router);
+    // }
 }
