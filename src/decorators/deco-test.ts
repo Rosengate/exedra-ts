@@ -9,21 +9,25 @@
 //     }
 // }
 import "reflect-metadata";
+import Route from "../routing/route.js";
 
-export default (de: string) : MethodDecorator => {
+export default (path: string) : MethodDecorator => {
     console.log('factory');
 
     return (target, propertyKey) => {
         if (!Reflect.hasMetadata('routes', target.constructor))
             Reflect.defineMetadata('routes', [], target.constructor);
 
-        const routes = Reflect.getMetadata('routes', target.constructor) as Array<any>
+        const routes = Reflect.getMetadata('routes', target.constructor) as Array<Route>;
 
-        routes.push({
-            path: path
-        });
+        const method = 'GET';
 
-        console.log(target.constructor);
-        console.log(propertyKey);
+        // routes.push({
+        //     flags: [],
+        //     method: method,
+        //     path: path,
+        //     serieses: [],
+        //     states: {}
+        // });
     }
 }

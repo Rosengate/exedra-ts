@@ -1,4 +1,5 @@
-export default class Properties {
+export default class Route {
+    name: string;
     path: string = '';
     method: string = 'any';
     states: {} = {};
