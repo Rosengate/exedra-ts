@@ -10,12 +10,16 @@ export default class GroupHandler extends AbstractHandler {
     }
 
     setup(router: e.Router, routing: RoutingMeta, methodMeta: MethodMeta) {
-        if (methodMeta.name.indexOf('group'))
+        if (methodMeta.name.indexOf('group') === 0)
             methodMeta.type = 'group';
     }
 
     handle(router: e.Router, routing: RoutingMeta, methodMeta: MethodMeta): void {
         const child = methodMeta.callable();
+
+        if (!child) {
+            console.log(methodMeta.name);
+        }
 
         const childRouting = this.exedra.handle(child);
 

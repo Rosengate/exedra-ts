@@ -5,7 +5,8 @@ import MethodMeta from "../decorators/method-meta.js";
 
 export default class SetupHandler extends AbstractHandler {
     setup(router: e.Router, routing: RoutingMeta, methodMeta: MethodMeta) {
-        methodMeta.type = 'setup';
+        if (methodMeta.name.indexOf('setup') === 0)
+            methodMeta.type = 'setup';
     }
 
     handle(router: e.Router, routing: RoutingMeta, methodMeta: MethodMeta): void {
