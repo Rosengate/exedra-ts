@@ -16,11 +16,11 @@ export default class RootController {
         return res.send('hehe');
     }
 
-    // groupWeb() {
-    //     return WebController;
-    // }
-    //
-    // groupApis() {
-    //     return ApisController;
-    // }
+    groupWeb() {
+        return WebController;
+    }
+
+    groupApis() {
+        return ApisController;
+    }
 }
