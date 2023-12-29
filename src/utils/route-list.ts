@@ -1,6 +1,7 @@
 function getPathFromRegex(regexp: any) {
     return regexp
         .toString()
+        .replace('?/i', '')
         .replace('/^', '')
         .replace('?(?=\\/|$)/i', '')
         .replace(/\\\//g, '/')
@@ -17,19 +18,24 @@ export const listRoutes = (routes: any[], basePath = '/', router: any) => {
     basePath = '/' + trimBoth(basePath, '/')
     if (router && router.stack) {
         for (const layer of router.stack) {
-            // if (!layer.route) {
-            //     continue;
-            // }
-
             if (layer.name == 'router') {
-                listRoutes(routes, basePath + '/' + getPathFromRegex(layer.regexp), layer.handle)
+                let groupPath;
+                if (layer.keys && layer.keys.length > 0) {
+                    groupPath = layer.keys.map((key: any) => '/:' + key.name).join('')
+                } else {
+                    groupPath = getPathFromRegex(layer.regexp);
+                }
+
+                console.log(layer)
+
+                listRoutes(routes, basePath + '/' + groupPath, layer.handle)
             } else {
                 if (!layer.route)
                     continue;
 
                 routes.push({
-                    path: `${basePath}${layer.route.path}`,
-                    method: Object.keys(layer.route.methods)[0]
+                    path: trimEnd(`${basePath}${layer.route.path}`.replaceAll('///', '/').replaceAll('//', '/'), '/'),
+                    method: Object.keys(layer.route.methods)[0].toUpperCase()
                 })
             }
         }
