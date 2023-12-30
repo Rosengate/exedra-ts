@@ -1,4 +1,4 @@
-import {controller, get} from "../decorators/decorators.js";
+import {Controller, Get} from "../decorators/decorators.js";
 import ApisController from "./apis-controller.js";
 import WebController from "./web-controller.js";
 
@@ -7,11 +7,11 @@ export default class RootController {
     //     console.log('hello world');
     // }
 
-    @get('/')
+    @Get('/')
     get() {
     }
 
-    @get('/contact-me')
+    @Get('/contact-me')
     contactMe(req: any, res: any) {
         return res.send('hehe');
     }

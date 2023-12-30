@@ -1,8 +1,8 @@
-import {controller, middleware, path} from "../decorators/decorators.js";
+import {Controller, Middleware, Path} from "../decorators/decorators.js";
 
-@controller('/')
+@Controller('/')
 export default class WebController {
-    @middleware()
+    @Middleware()
     middleware() {
 
     }
@@ -10,7 +10,7 @@ export default class WebController {
     index() {
     }
 
-    @path('/contact-us')
+    @Path('/contact-us')
     contactUs() {
     }
 }

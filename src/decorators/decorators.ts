@@ -23,7 +23,7 @@ export function getMethodMeta(controller: any, method: any) : MethodMeta {
     return routingMeta.methods[method];
 }
 
-export const path = (path: string) : MethodDecorator => {
+export const Path = (path: string) : MethodDecorator => {
     return (target, propertyKey, descriptor) => {
         getMethodMeta(target.constructor, propertyKey).path = path;
         getMethodMeta(target.constructor, propertyKey).type = 'route';
@@ -33,7 +33,7 @@ export const path = (path: string) : MethodDecorator => {
     }
 }
 
-export const get = (path: string) : MethodDecorator => {
+export const Get = (path: string) : MethodDecorator => {
     return (target, propertyKey, descriptor) => {
         getMethodMeta(target.constructor, propertyKey).type = 'route';
         getMethodMeta(target.constructor, propertyKey).path = path;
@@ -41,7 +41,7 @@ export const get = (path: string) : MethodDecorator => {
     }
 }
 
-export const post = (path: string) : MethodDecorator => {
+export const Post = (path: string) : MethodDecorator => {
     return (target, propertyKey, descriptor) => {
         getMethodMeta(target.constructor, propertyKey).type = 'route';
         getMethodMeta(target.constructor, propertyKey).path = path;
@@ -49,41 +49,44 @@ export const post = (path: string) : MethodDecorator => {
     }
 }
 
-export const middleware = () : MethodDecorator => {
+export const Delete = (path: string) : MethodDecorator => {
+    return (target, propertyKey, descriptor) => {
+        getMethodMeta(target.constructor, propertyKey).type = 'route';
+        getMethodMeta(target.constructor, propertyKey).path = path;
+        getMethodMeta(target.constructor, propertyKey).method = 'delete';
+    }
+}
+
+export const Patch = (path: string) : MethodDecorator => {
+    return (target, propertyKey, descriptor) => {
+        getMethodMeta(target.constructor, propertyKey).type = 'route';
+        getMethodMeta(target.constructor, propertyKey).path = path;
+        getMethodMeta(target.constructor, propertyKey).method = 'patch';
+    }
+}
+
+export const Put = (path: string) : MethodDecorator => {
+    return (target, propertyKey, descriptor) => {
+        getMethodMeta(target.constructor, propertyKey).type = 'route';
+        getMethodMeta(target.constructor, propertyKey).path = path;
+        getMethodMeta(target.constructor, propertyKey).method = 'put';
+    }
+}
+
+export const Middleware = () : MethodDecorator => {
     return (target, propertyKey, descriptor) => {
         getMethodMeta(target.constructor, propertyKey).type = 'middleware';
     }
 }
 
-export const method = (method: 'get' | 'post' | 'delete' | 'patch') : MethodDecorator => {
+export const Method = (method: 'get' | 'post' | 'delete' | 'patch') : MethodDecorator => {
     return (target, propertyKey, descriptor) => {
         getMethodMeta(target.constructor, propertyKey).method = method;
     }
 }
 
-export const controller = (prefix: string) : ClassDecorator => {
+export const Controller = (prefix: string) : ClassDecorator => {
     return (target) => {
         getRoutingMeta(target).prefix = prefix;
     }
 }
-
-
-// export function path(path: string) : any {
-//     return (target: any, propertyKey: any, descriptor: any) => {
-//         const isMethod = !!descriptor;
-//
-//         const controller = isMethod ? target.constructor : target;
-//
-//         if (isMethod) {
-//
-//         } else {
-//
-//         }
-//         // const controller = isMethod(target, propertyKey, descriptor) ? target.constructor : target;
-//
-//         controller.routes = [];
-//
-//         if (!Reflect.hasMetadata('routes', target.constructor))
-//             Reflect.defineMetadata('routes', [], target.constructor);
-//     }
-// }

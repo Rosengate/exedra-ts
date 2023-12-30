@@ -1,13 +1,13 @@
-import {controller, middleware, path} from "../decorators/decorators.js";
+import {Controller, Middleware, Path} from "../decorators/decorators.js";
 import UsersApisController from "./apis/users-apis-controller.js";
 
-@controller('/apis')
+@Controller('/apis')
 export default class ApisController {
-    @path('/')
+    @Path('/')
     get() {
     }
 
-    @path('/cool')
+    @Path('/cool')
     getCool() {
     }
 

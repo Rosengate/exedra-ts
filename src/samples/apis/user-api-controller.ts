@@ -1,13 +1,13 @@
-import {controller, get, path, post} from "../../decorators/decorators.js";
+import {Controller, Get, Path, Post} from "../../decorators/decorators.js";
 import UserLogsApiController from "./user/user-logs-api-controller.js";
 
-@controller('/:userId')
+@Controller('/:userId')
 export default class UserApiController {
-    @get('/')
+    @Get('/')
     get() {
     }
 
-    @post('/')
+    @Post('/')
     post() {
     }
 

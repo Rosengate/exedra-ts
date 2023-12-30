@@ -1,9 +1,9 @@
-import {controller, get, path} from "../../decorators/decorators.js";
+import {Controller, Get, Path} from "../../decorators/decorators.js";
 import UserApiController from "./user-api-controller.js";
 
-@controller('/users')
+@Controller('/users')
 export default class UsersApisController {
-    @get('/')
+    @Get('/')
     list() {
     }
 
