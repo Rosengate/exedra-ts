@@ -60,7 +60,7 @@ class ApisController {
     return next();
   }
 
-  // Verb-only methods: get(), post(), put(), delete() → defaults to group base path
+  // Verb-only methods: get(), post() → HTTP verb on group base path
   // get()  → GET  /apis
   // post() → POST /apis
   get(context: Context) {
@@ -71,9 +71,10 @@ class ApisController {
     return { created: true };
   }
 
-  // Verb + suffix: getUsers() → GET /apis/users
-  @Get('/hello-world')
-  helloWorld() {
+  // Verb + suffix: route name uses suffix, but path needs @Path
+  // getHelloWorld() → GET /apis/hello-world (via @Path)
+  @Path('/hello-world')
+  getHelloWorld() {
     return { message: 'Hello, World!' };
   }
 }
@@ -523,8 +524,9 @@ class Handler {
 
   // RESTful verb detection:
   //   'get'         → ['get', 'get']          (verb only, no suffix)
-  //   'getProducts' → ['get-products', 'get'] (verb + suffix → kebab-cased path)
+  //   'getProducts' → ['get-products', 'get'] (verb + suffix → route name, NOT path)
   //   'postUser'    → ['post-user', 'post']
+  // Path is NOT auto-set from suffix. Use @Path decorator to set path explicitly.
   parseRestfulMethod(name: string): [string, string] | null { ... }
 
   parseSubMethod(name: string): string | null { ... }      // returns route name
@@ -952,7 +954,7 @@ Inherited from exedra-php. Method names are prefixed to determine their role:
 | `sub*` | Immediate subrouting | `subAdmin(group)` | Inline subrouting, receives Group |
 | `route*` | Route customization | `routeFaq(route)` | Receives Route for OO customization |
 
-**Route name derivation**:
+**Route name derivation** (suffix determines name, NOT path):
 
 ```
 executeIndex        → 'index'
@@ -1000,18 +1002,18 @@ put()         → 'put'        → PUT       → /users
 delete()      → 'delete'     → DELETE    → /users
 ```
 
-**With suffix** — adds a sub-path:
+**With suffix** — the suffix is used for the route name only, NOT for the path:
 
 ```typescript
 @Controller('/users')
 class UserController {
-  // getProducts() → GET /users/products (kebab-cased suffix becomes path)
+  // getProducts() → GET /users (path stays at group base, route name = 'get-products')
   getProducts(context: Context) {
     return [];
   }
 
-  // postProfile() → POST /users/profile
-  postProfile(context: Context) {
+  // postComment() → POST /users (path stays at group base, route name = 'post-comment')
+  postComment(context: Context) {
     return {};
   }
 }
@@ -1020,27 +1022,39 @@ class UserController {
 ```
 Method name     → Route name       → HTTP verb → Path
 get()           → 'get'            → GET       → /users
-getProducts()   → 'get-products'   → GET       → /users/products
+getProducts()   → 'get-products'   → GET       → /users   (no path change!)
 post()          → 'post'           → POST      → /users
-postProfile()   → 'post-profile'   → POST      → /users/profile
+postComment()   → 'post-comment'   → POST      → /users   (no path change!)
 ```
 
-The suffix is also used as a sub-path by default. If you want a custom path, use `@Path`:
+**To set a path**, use `@Path` explicitly:
 
 ```typescript
 @Controller('/users')
 class UserController {
-  @Path('/all')
+  @Path('/products')
   getProducts(context: Context) {
     return [];
   }
-  // → GET /users/all (not /users/products)
+  // → GET /users/products
+
+  @Path('/comment')
+  postComment(context: Context) {
+    return {};
+  }
+  // → POST /users/comment
 }
+```
+
+```
+Method name     → Route name       → HTTP verb → Path
+getProducts()   → 'get-products'   → GET       → /users/products   (via @Path)
+postComment()   → 'post-comment'   → POST      → /users/comment    (via @Path)
 ```
 
 ### RESTful Verb Convention
 
-The `get*`, `post*`, `put*`, `delete*`, `patch*` prefixes automatically determine the HTTP verb. Combined with `@Path`, this gives a fully convention-based RESTful controller without any explicit `@Get`/`@Post` decorators needed:
+The `get*`, `post*`, `put*`, `delete*`, `patch*` prefixes automatically determine the HTTP verb. Combined with `@Path`, this gives a convention-based RESTful controller without explicit `@Get`/`@Post` decorators:
 
 ```typescript
 @Controller('/articles')
@@ -1050,13 +1064,18 @@ class ArticleController {
     return next();
   }
 
-  // Convention: method name prefix = HTTP verb
+  // Verb prefix = HTTP method. Path must come from @Path.
   get() { }                          // GET    /articles
   post(context: Context) { }         // POST   /articles
+  @Path('/featured')
   getFeatured() { }                  // GET    /articles/featured
+  @Path('/comment')
   postComment() { }                  // POST   /articles/comment
+  @Path('/settings')
   putSettings() { }                  // PUT    /articles/settings
+  @Path('/image')
   deleteImage() { }                  // DELETE /articles/image
+  @Path('/status')
   patchStatus() { }                  // PATCH  /articles/status
 }
 ```
@@ -1068,6 +1087,9 @@ This maps 1:1 to PHP exedra's restful verb pattern:
 class ArticleController extends Controller {
     public function get(Context $context) { }           // GET /articles
     public function post(Context $context) { }          // POST /articles
+    /**
+     * @path /featured
+     */
     public function getFeatured(Context $context) { }   // GET /articles/featured
 }
 ```
