@@ -11,7 +11,7 @@ npm i exedra-ts express reflect-metadata
 ```typescript
 import 'reflect-metadata';
 import express from 'express';
-import { Controller, Get, Post, Path, Middleware, createExedra } from 'exedra-ts';
+import { Get, Post, Path, Middleware, createExedra } from 'exedra-ts';
 
 // --- External middleware (optional, can also define middleware as methods on the controller) ---
 function AuthMiddleware(req, res, next) {
@@ -20,8 +20,7 @@ function AuthMiddleware(req, res, next) {
 }
 
 // --- Root controller with subrouting ---
-@Controller('/')
-class RootController {
+class RootController extends Controller {
   groupWeb() {
     return WebController;
   }
@@ -31,28 +30,28 @@ class RootController {
 }
 
 // --- Web routes ---
-@Controller('/')
-class WebController {
+@Path('/')
+class WebController extends Controller {
   middlewareCors(context: Context, next: () => Promise<any>) {
     context.res.setHeader('Access-Control-Allow-Origin', '*');
     return next();
   }
 
   @Get('/')
-  index() {
+  getIndex() {
     return { page: 'home' };
   }
 
   @Get('/about')
-  about() {
+  getAbout() {
     return { page: 'about' };
   }
 }
 
 // --- API routes with middleware methods defined directly on the controller ---
-@Controller('/apis')
 @Middleware(AuthMiddleware)          // external middleware class (optional)
-class ApisController {
+@Path('/apis')
+class ApisController extends Controller {
   // Method-based middleware: prefix with "middleware"
   // Runs for ALL routes in this controller group
   middlewareLog(context: Context, next: () => Promise<any>) {
@@ -233,7 +232,7 @@ Usage:
 ```typescript
 class UserController extends Controller {
   @Get('/')
-  list() { return []; }
+  getList() { return []; }
 }
 
 // Controller is instantiated once, reused across all requests
@@ -275,15 +274,29 @@ Each attribute is a decorator factory that stores metadata via `Reflect.defineMe
 
 #### @Path
 
-Sets the route path. At class level, it's the base path. At method level, it's appended.
+Sets the route path. At class level, it's the base path. At method level, it's appended to the class path.
 
 ```typescript
-@Controller('/users')
-@Path('/api')            // class level: /users is relative to parent group
-class UserController {
-  @Get('/')
-  @Path('/list')         // method level: full path becomes /list
-  list() { ... }
+// @Path at class level sets the base path for the controller
+@Path('/users')
+class UserController extends Controller {
+  @Path('/list')
+  getProducts() { ... }
+  // → GET /users/list
+
+  @Path('/profile/:id')
+  getProfile() { ... }
+  // → GET /users/profile/:id
+}
+```
+
+```typescript
+// Verb-only methods use the class-level path
+@Path('/api')
+class ApiController extends Controller {
+  @Get('/users')
+  getUsers() { ... }
+  // → GET /api/users
 }
 ```
 
@@ -315,8 +328,8 @@ Attaches external middleware classes to a route or controller.
 ```typescript
 @Middleware(AuthMiddleware)
 @Middleware(RateLimitMiddleware)
-@Controller('/admin')
-class AdminController { ... }
+@Path('/admin')
+class AdminController extends Controller { ... }
 ```
 
 #### @Decorator
@@ -970,8 +983,8 @@ routeSettings       → 'settings'
 A method named with just a verb (no suffix) automatically maps to that HTTP method on `/` (the group's base path). No `@Path` annotation needed.
 
 ```typescript
-@Controller('/users')
-class UserController {
+@Path('/users')
+class UserController extends Controller {
   // get() → GET /users (no suffix, path defaults to group base)
   get(context: Context) {
     return [{ id: 1, name: 'John' }];
@@ -1005,8 +1018,8 @@ delete()      → 'delete'     → DELETE    → /users
 **With suffix** — the suffix is used for the route name only, NOT for the path:
 
 ```typescript
-@Controller('/users')
-class UserController {
+@Path('/users')
+class UserController extends Controller {
   // getProducts() → GET /users (path stays at group base, route name = 'get-products')
   getProducts(context: Context) {
     return [];
@@ -1030,8 +1043,8 @@ postComment()   → 'post-comment'   → POST      → /users   (no path change!
 **To set a path**, use `@Path` explicitly:
 
 ```typescript
-@Controller('/users')
-class UserController {
+@Path('/users')
+class UserController extends Controller {
   @Path('/products')
   getProducts(context: Context) {
     return [];
@@ -1057,8 +1070,8 @@ postComment()   → 'post-comment'   → POST      → /users/comment    (via @P
 The `get*`, `post*`, `put*`, `delete*`, `patch*` prefixes automatically determine the HTTP verb. Combined with `@Path`, this gives a convention-based RESTful controller without explicit `@Get`/`@Post` decorators:
 
 ```typescript
-@Controller('/articles')
-class ArticleController {
+@Path('/articles')
+class ArticleController extends Controller {
   middlewareAuth(context: Context, next: () => Promise<any>) {
     // protects all routes
     return next();
@@ -1097,13 +1110,13 @@ class ArticleController extends Controller {
 You can still use explicit decorators (`@Get`, `@Post`, etc.) for routes that don't follow the naming convention:
 
 ```typescript
-@Controller('/articles')
-class ArticleController {
+@Path('/articles')
+class ArticleController extends Controller {
   @Get('/search')
-  findArticles() { }     // GET /articles/search (can't use find* prefix — no verb)
+  getSearch() { }     // GET /articles/search
 
   @Post('/bulk-delete')
-  bulkDelete() { }       // POST /articles/bulk-delete
+  postBulkDelete() { }       // POST /articles/bulk-delete
 }
 ```
 
@@ -1114,8 +1127,8 @@ Middleware can be defined as methods directly on the controller class. This is t
 **Naming convention**: prefix the method name with `middleware`.
 
 ```typescript
-@Controller('/admin')
-class AdminController {
+@Path('/admin')
+class AdminController extends Controller {
   // This method runs as middleware for ALL routes in AdminController
   middlewareAuth(context: Context, next: () => Promise<any>) {
     if (!context.req.session.user) {
@@ -1134,12 +1147,12 @@ class AdminController {
   }
 
   @Get('/dashboard')
-  dashboard() {
+  getDashboard() {
     return { page: 'dashboard' };
   }
 
   @Get('/settings')
-  settings() {
+  getSettings() {
     return { page: 'settings' };
   }
 }
@@ -1169,28 +1182,28 @@ middlewareWithService(context: Context, next: () => Promise<any>, userService: U
 **Combining method-based and attribute-based middleware**:
 
 ```typescript
-@Controller('/api')
 @Middleware(CorsMiddleware)              // external middleware class
 @Middleware(ExceptionHandler)            // external middleware class
-class ApiController {
+@Path('/api')
+class ApiController extends Controller {
   middlewareAuth(context: Context, next: () => Promise<any>) {
     // method-based middleware
     return next();
   }
 
   @Get('/users')
-  listUsers() {
+  getUsers() {
     return [];
   }
 }
-// Execution: CorsMiddleware → ExceptionHandler → middlewareAuth → listUsers()
+// Execution: CorsMiddleware → ExceptionHandler → middlewareAuth → getUsers()
 ```
 
 **Subrouting inherits parent middleware**:
 
 ```typescript
-@Controller('/admin')
-class AdminController {
+@Path('/admin')
+class AdminController extends Controller {
   middlewareAuth(context: Context, next: () => Promise<any>) {
     // protects ALL routes under /admin
     return next();
@@ -1201,12 +1214,12 @@ class AdminController {
   }
 }
 
-@Controller('/settings')
-class SettingsController {
+@Path('/settings')
+class SettingsController extends Controller {
   // middlewareAuth from parent AdminController runs before all routes here
 
   @Get('/')
-  index() { return {}; }
+  getIndex() { return {}; }
 }
 ```
 
@@ -1215,8 +1228,8 @@ class SettingsController {
 Decorator methods wrap the response for all routes in the controller. Prefix the method name with `decorate`.
 
 ```typescript
-@Controller('/api')
-class ApiController {
+@Path('/api')
+class ApiController extends Controller {
   decorateTransform(context: Context, next: () => Promise<any>) {
     const result = await next();
     // Transform the response
@@ -1224,7 +1237,7 @@ class ApiController {
   }
 
   @Get('/users')
-  listUsers() {
+  getUsers() {
     return [{ id: 1, name: 'John' }];
     // Response: { data: [{ id: 1, name: 'John' }], timestamp: 1234567890 }
   }
