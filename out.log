@@ -1,0 +1,35 @@
+
+  exedra-ts example app running
+
+  http://localhost:3000/
+  http://localhost:3000/health
+  http://localhost:3000/users
+  http://localhost:3000/users/1
+  http://localhost:3000/posts
+  http://localhost:3000/posts/1
+  http://localhost:3000/admin
+  http://localhost:3000/admin/settings
+  http://localhost:3000/admin/stats
+
+GET / → 200 (7ms)
+GET /health → 200 (1ms)
+GET /users → 401 (0ms)
+GET /users → 200 (0ms)
+GET /users/1 → 200 (1ms)
+[PostController] GET /
+GET /posts → 200 (0ms)
+POST /users → 200 (0ms)
+PUT /users/1 → 200 (0ms)
+DELETE /users/1 → 200 (0ms)
+[PostController] PATCH /1
+PATCH /posts/1 → 200 (1ms)
+[AdminController] Checking auth for admin area
+[Admin] GET /
+GET /admin → 200 (2ms)
+[AdminController] Checking auth for admin area
+[Admin] GET /
+[AdminSettings] Checking admin access
+GET /admin/settings → 200 (1ms)
+[AdminController] Checking auth for admin area
+[Admin] GET /
+GET /admin/stats → 200 (0ms)

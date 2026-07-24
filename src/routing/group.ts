@@ -190,13 +190,24 @@ export class Group {
   registerOnRouter(router: express.Router): void {
     for (const route of this.routes) {
       if (route.asFailRoute || !route.requestable) continue;
+
+      const childGroup: Group | undefined = route.properties._childGroup;
+      const basePath = route.path || '';
+
+      if (childGroup) {
+        const childRouter = express.Router();
+        childGroup.registerOnRouter(childRouter);
+        const mountPath = '/' + basePath.replace(/^\//, '');
+        router.use(mountPath, childRouter);
+      }
+
       if (!route.method) continue;
 
       const verb = route.method.toLowerCase() as keyof express.Router;
-      const fullPath = route.getPath();
+      const fullPath = '/' + basePath.replace(/^\//, '');
 
       if (typeof router[verb] === 'function') {
-        (router[verb] as any)(fullPath, ...this.buildHandlers(route));
+        (router[verb] as any)(fullPath || '/', ...this.buildHandlers(route));
       }
     }
   }
@@ -205,10 +216,12 @@ export class Group {
     const handlers: express.RequestHandler[] = [];
     const routeProps = route.fullProperties();
 
-    const mwEntries: MiddlewareEntry[] = routeProps.middleware || [];
+    const mwEntries: any[] = routeProps.middleware || [];
     for (const entry of mwEntries) {
+      const fn = typeof entry === 'function' ? entry : entry.fn;
+      if (typeof fn !== 'function') continue;
       handlers.push((req, res, next) => {
-        const result = entry.fn(req, res, next);
+        const result = fn(req, res, next);
         if (result && typeof result.then === 'function') {
           result.catch(next);
         }
@@ -221,7 +234,13 @@ export class Group {
         try {
           const result = exec(req, res, next);
           if (result && typeof result.then === 'function') {
-            result.catch(next);
+            result.then((value: any) => {
+              if (value !== undefined && !res.headersSent) {
+                res.json(value);
+              }
+            }).catch(next);
+          } else if (result !== undefined && !res.headersSent) {
+            res.json(result);
           }
         } catch (err) {
           next(err);

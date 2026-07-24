@@ -10,7 +10,7 @@ import { Route } from './routing/route';
 const HTTP_VERBS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'];
 
 export interface ExedraOptions {
-  controller: new () => Controller;
+  controller: Function;
   middlewares?: Function[];
   decorators?: Function[];
 }
@@ -19,8 +19,13 @@ class Handler {
   private reflectionCache = new Map<Function, RouteMetadata>();
 
   resolveGroup(factory: Factory, controllerClass: Function, parentRoute?: Route): Group {
-    const controller = (controllerClass as any).instance();
     const group = factory.createGroup([], parentRoute);
+    this.resolveGroupInto(controllerClass, group, factory);
+    return group;
+  }
+
+  resolveGroupInto(controllerClass: Function, group: Group, factory: Factory): void {
+    const controller = (controllerClass as any).instance();
 
     const proto = controllerClass.prototype;
     const methodNames = Object.getOwnPropertyNames(proto);
@@ -65,6 +70,9 @@ class Handler {
           type = 'subroutes_call';
         } else if ((routeName = this.parseRouteMethod(methodName))) {
           type = 'route_call';
+        } else if (methodMeta.method || methodMeta.path) {
+          type = 'execute';
+          routeName = kebabCase(methodName);
         } else {
           continue;
         }
@@ -108,24 +116,24 @@ class Handler {
       const route = factory.createRoute(group, name, properties);
       group.addRoute(route);
 
-      if (type === 'subroutes_call') {
+      if (type === 'subroutes' && childClass) {
+        const childGroup = factory.createGroup([], route);
+        this.resolveGroupInto(childClass, childGroup, factory);
+        route.properties._childGroup = childGroup;
+      } else if (type === 'subroutes_call') {
         const subGroup = factory.createGroup([], route);
         controller[methodName](subGroup);
       } else if (type === 'route_call') {
         controller[methodName](route);
       }
     }
-
-    return group;
   }
 
   private buildProperties(methodMeta: RouteMetadata): Record<string, any> {
     const props: Record<string, any> = {};
-
     for (const [key, value] of Object.entries(methodMeta)) {
       props[key] = value;
     }
-
     return props;
   }
 
