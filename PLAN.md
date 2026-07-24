@@ -13,23 +13,13 @@ import 'reflect-metadata';
 import express from 'express';
 import { Controller, Get, Post, Path, Middleware, createExedra } from 'exedra-ts';
 
-@Controller('/')
-class WebController {
-  @Get('/')
-  index() {
-    return { page: 'home' };
-  }
+// --- External middleware (optional, can also define middleware as methods on the controller) ---
+function AuthMiddleware(req, res, next) {
+  if (!req.session.user) return res.redirect('/login');
+  next();
 }
 
-@Controller('/apis')
-@Middleware(AuthMiddleware)
-class ApisController {
-  @Get('/hello-world')
-  helloWorld() {
-    return { message: 'Hello, World!' };
-  }
-}
-
+// --- Root controller with subrouting ---
 @Controller('/')
 class RootController {
   groupWeb() {
@@ -37,6 +27,54 @@ class RootController {
   }
   groupApis() {
     return ApisController;
+  }
+}
+
+// --- Web routes ---
+@Controller('/')
+class WebController {
+  middlewareCors(context: Context, next: () => Promise<any>) {
+    context.res.setHeader('Access-Control-Allow-Origin', '*');
+    return next();
+  }
+
+  @Get('/')
+  index() {
+    return { page: 'home' };
+  }
+
+  @Get('/about')
+  about() {
+    return { page: 'about' };
+  }
+}
+
+// --- API routes with middleware methods defined directly on the controller ---
+@Controller('/apis')
+@Middleware(AuthMiddleware)          // external middleware class (optional)
+class ApisController {
+  // Method-based middleware: prefix with "middleware"
+  // Runs for ALL routes in this controller group
+  middlewareLog(context: Context, next: () => Promise<any>) {
+    console.log(`[${new Date().toISOString()}] ${context.req.method} ${context.req.path}`);
+    return next();
+  }
+
+  // Verb-only methods: get(), post(), put(), delete() → defaults to group base path
+  // get()  → GET  /apis
+  // post() → POST /apis
+  get(context: Context) {
+    return [{ id: 1, name: 'John' }];
+  }
+
+  post(context: Context) {
+    return { created: true };
+  }
+
+  // Verb + suffix: getUsers() → GET /apis/users
+  @Get('/hello-world')
+  helloWorld() {
+    return { message: 'Hello, World!' };
   }
 }
 
@@ -65,6 +103,9 @@ app.listen(3000);
    - [Validation Attribute](#validation-attribute)
    - [Transformer Attribute](#transformer-attribute)
 4. [Method Prefix Convention](#method-prefix-convention)
+   - [Middleware Methods](#middleware-methods)
+   - [Decorator Methods](#decorator-methods)
+   - [RESTful Verb Convention](#restful-verb-convention)
 5. [Attribute Reference](#attribute-reference)
 6. [Public API](#public-api)
 7. [Implementation Phases](#implementation-phases)
@@ -426,13 +467,51 @@ class Handler {
   private reflectionCache: Map<Function, Reflection>;
 
   resolveGroup(factory: Factory, controllerClass: Function, parentRoute?: Route): Group {
-    // 1. Get singleton controller instance
-    // 2. Reflect on the class
-    // 3. Read class-level attributes
-    // 4. Iterate methods, detect prefixes
-    // 5. For each detected route, read method-level attributes
-    // 6. Merge class + method properties
-    // 7. Register routes on Group
+    const controller = controllerClass.instance();
+    const group = factory.createGroup([], parentRoute);
+
+    // 1. Read class-level attributes (@Path, @Middleware, @Decorator, etc.)
+    // 2. Apply class-level properties to the group/route
+
+    // 3. Iterate all methods on the controller prototype
+    for (const methodName of Object.getOwnPropertyNames(controllerClass.prototype)) {
+      if (methodName === 'constructor') continue;
+
+      // 4. Detect method prefix — determines what this method IS
+
+      if (this.parseMiddlewareMethod(methodName)) {
+        // middlewareAuth → bind as group middleware
+        const fn = controller[methodName].bind(controller);
+        group.addMiddleware(fn);
+        continue;
+      }
+
+      if (this.parseDecorateMethod(methodName)) {
+        // decorateTransform → bind as group decorator
+        const fn = controller[methodName].bind(controller);
+        group.addDecorator(fn);
+        continue;
+      }
+
+      if (this.parseSetupMethod(methodName)) {
+        // setupRoutes(group) → call with group for manual route registration
+        controller[methodName](group);
+        continue;
+      }
+
+      // 5. For route methods (execute*, group*, get*, post*, etc.):
+      //    a. Read method-level attributes
+      //    b. Merge class + method properties (path concatenation, middleware merge)
+      //    c. Register route on group
+
+      if (routeName = this.parseExecuteMethod(methodName)) { ... }
+      else if (routeName = this.parseGroupMethod(methodName)) { ... }
+      else if (result = this.parseRestfulMethod(methodName)) { ... }
+      else if (routeName = this.parseSubMethod(methodName)) { ... }
+      else if (routeName = this.parseRouteMethod(methodName)) { ... }
+    }
+
+    return group;
   }
 
   // Prefix detection methods
@@ -441,7 +520,13 @@ class Handler {
   parseSetupMethod(name: string): boolean { return name.startsWith('setup'); }
   parseExecuteMethod(name: string): string | null { ... }  // returns route name
   parseGroupMethod(name: string): string | null { ... }    // returns route name
-  parseRestfulMethod(name: string): [string, string] | null { ... } // returns [routeName, verb]
+
+  // RESTful verb detection:
+  //   'get'         → ['get', 'get']          (verb only, no suffix)
+  //   'getProducts' → ['get-products', 'get'] (verb + suffix → kebab-cased path)
+  //   'postUser'    → ['post-user', 'post']
+  parseRestfulMethod(name: string): [string, string] | null { ... }
+
   parseSubMethod(name: string): string | null { ... }      // returns route name
   parseRouteMethod(name: string): string | null { ... }    // returns route name
 }
@@ -880,9 +965,248 @@ routeSettings       → 'settings'
 
 **RESTful verb-only methods**:
 
+A method named with just a verb (no suffix) automatically maps to that HTTP method on `/` (the group's base path). No `@Path` annotation needed.
+
+```typescript
+@Controller('/users')
+class UserController {
+  // get() → GET /users (no suffix, path defaults to group base)
+  get(context: Context) {
+    return [{ id: 1, name: 'John' }];
+  }
+
+  // post() → POST /users
+  post(context: Context) {
+    return { created: true };
+  }
+
+  // put() → PUT /users
+  put(context: Context) {
+    return { updated: true };
+  }
+
+  // delete() → DELETE /users
+  delete(context: Context) {
+    return { deleted: true };
+  }
+}
 ```
-get()               → 'get' (just the verb)
-post()              → 'post'
+
+```
+Method name   → Route name   → HTTP verb → Path (relative to group)
+get()         → 'get'        → GET       → /users
+post()        → 'post'       → POST      → /users
+put()         → 'put'        → PUT       → /users
+delete()      → 'delete'     → DELETE    → /users
+```
+
+**With suffix** — adds a sub-path:
+
+```typescript
+@Controller('/users')
+class UserController {
+  // getProducts() → GET /users/products (kebab-cased suffix becomes path)
+  getProducts(context: Context) {
+    return [];
+  }
+
+  // postProfile() → POST /users/profile
+  postProfile(context: Context) {
+    return {};
+  }
+}
+```
+
+```
+Method name     → Route name       → HTTP verb → Path
+get()           → 'get'            → GET       → /users
+getProducts()   → 'get-products'   → GET       → /users/products
+post()          → 'post'           → POST      → /users
+postProfile()   → 'post-profile'   → POST      → /users/profile
+```
+
+The suffix is also used as a sub-path by default. If you want a custom path, use `@Path`:
+
+```typescript
+@Controller('/users')
+class UserController {
+  @Path('/all')
+  getProducts(context: Context) {
+    return [];
+  }
+  // → GET /users/all (not /users/products)
+}
+```
+
+### RESTful Verb Convention
+
+The `get*`, `post*`, `put*`, `delete*`, `patch*` prefixes automatically determine the HTTP verb. Combined with `@Path`, this gives a fully convention-based RESTful controller without any explicit `@Get`/`@Post` decorators needed:
+
+```typescript
+@Controller('/articles')
+class ArticleController {
+  middlewareAuth(context: Context, next: () => Promise<any>) {
+    // protects all routes
+    return next();
+  }
+
+  // Convention: method name prefix = HTTP verb
+  get() { }                          // GET    /articles
+  post(context: Context) { }         // POST   /articles
+  getFeatured() { }                  // GET    /articles/featured
+  postComment() { }                  // POST   /articles/comment
+  putSettings() { }                  // PUT    /articles/settings
+  deleteImage() { }                  // DELETE /articles/image
+  patchStatus() { }                  // PATCH  /articles/status
+}
+```
+
+This maps 1:1 to PHP exedra's restful verb pattern:
+
+```php
+// PHP equivalent
+class ArticleController extends Controller {
+    public function get(Context $context) { }           // GET /articles
+    public function post(Context $context) { }          // POST /articles
+    public function getFeatured(Context $context) { }   // GET /articles/featured
+}
+```
+
+You can still use explicit decorators (`@Get`, `@Post`, etc.) for routes that don't follow the naming convention:
+
+```typescript
+@Controller('/articles')
+class ArticleController {
+  @Get('/search')
+  findArticles() { }     // GET /articles/search (can't use find* prefix — no verb)
+
+  @Post('/bulk-delete')
+  bulkDelete() { }       // POST /articles/bulk-delete
+}
+```
+
+### Middleware Methods
+
+Middleware can be defined as methods directly on the controller class. This is the primary way to attach middleware in exedra-ts — no need for external middleware classes.
+
+**Naming convention**: prefix the method name with `middleware`.
+
+```typescript
+@Controller('/admin')
+class AdminController {
+  // This method runs as middleware for ALL routes in AdminController
+  middlewareAuth(context: Context, next: () => Promise<any>) {
+    if (!context.req.session.user) {
+      return context.redirect('/login');
+    }
+    return next();
+  }
+
+  // Another middleware method — runs in order (top to bottom)
+  middlewareRateLimit(context: Context, next: () => Promise<any>) {
+    const ip = context.req.ip;
+    if (isRateLimited(ip)) {
+      return context.res.status(429).json({ error: 'Too many requests' });
+    }
+    return next();
+  }
+
+  @Get('/dashboard')
+  dashboard() {
+    return { page: 'dashboard' };
+  }
+
+  @Get('/settings')
+  settings() {
+    return { page: 'settings' };
+  }
+}
+```
+
+**Execution order**: Middleware methods run in declaration order (top to bottom) for every route in the controller.
+
+```
+Request → middlewareAuth → middlewareRateLimit → dashboard()
+```
+
+**Middleware method signatures**:
+
+```typescript
+// Basic: just context + next
+middlewareFoo(context: Context, next: () => Promise<any>) {
+  return next();
+}
+
+// With DI: constructor-injected services are auto-resolved
+middlewareWithService(context: Context, next: () => Promise<any>, userService: UserService) {
+  // ...
+  return next();
+}
+```
+
+**Combining method-based and attribute-based middleware**:
+
+```typescript
+@Controller('/api')
+@Middleware(CorsMiddleware)              // external middleware class
+@Middleware(ExceptionHandler)            // external middleware class
+class ApiController {
+  middlewareAuth(context: Context, next: () => Promise<any>) {
+    // method-based middleware
+    return next();
+  }
+
+  @Get('/users')
+  listUsers() {
+    return [];
+  }
+}
+// Execution: CorsMiddleware → ExceptionHandler → middlewareAuth → listUsers()
+```
+
+**Subrouting inherits parent middleware**:
+
+```typescript
+@Controller('/admin')
+class AdminController {
+  middlewareAuth(context: Context, next: () => Promise<any>) {
+    // protects ALL routes under /admin
+    return next();
+  }
+
+  groupSettings() {
+    return SettingsController;  // inherits middlewareAuth
+  }
+}
+
+@Controller('/settings')
+class SettingsController {
+  // middlewareAuth from parent AdminController runs before all routes here
+
+  @Get('/')
+  index() { return {}; }
+}
+```
+
+### Decorator Methods
+
+Decorator methods wrap the response for all routes in the controller. Prefix the method name with `decorate`.
+
+```typescript
+@Controller('/api')
+class ApiController {
+  decorateTransform(context: Context, next: () => Promise<any>) {
+    const result = await next();
+    // Transform the response
+    return { data: result, timestamp: Date.now() };
+  }
+
+  @Get('/users')
+  listUsers() {
+    return [{ id: 1, name: 'John' }];
+    // Response: { data: [{ id: 1, name: 'John' }], timestamp: 1234567890 }
+  }
+}
 ```
 
 ---
