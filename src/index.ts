@@ -19,6 +19,13 @@ export {
   Series,
   Flag,
   Config,
+  Param,
+  Body,
+  Query,
+  Header,
+  Req,
+  Res,
+  Next,
 } from './attributes';
 
 export { Validation, createValidationMiddleware, type ValidatorFn } from './attributes/validation';

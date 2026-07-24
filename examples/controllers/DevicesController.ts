@@ -1,19 +1,40 @@
-import {Controller, Path} from "../../src";
-import express from "express";
+import { Controller, Path, Get, Post, Param, Body, Query, Header, Req } from '../../src';
 
-@Path('/devices')
 export default class DevicesController extends Controller {
-    @Path('/')
-    get() {
-        return {
-            hello: 'world'
-        }
-    }
+  @Get('')
+  getAll(limit: number, offset: number) {
+    return {
+      devices: [],
+      limit,
+      offset,
+    };
+  }
 
-    @Path('/:device')
-    getDevice(request: express.Request) {
-        return {
-            hello: request.params.device
-        }
-    }
+  @Get('/:device')
+  getDevice(@Param('device') id: string) {
+    return {
+      device: id,
+    };
+  }
+
+  @Post('')
+  createDevice(@Body('name') name: string, @Body('model') model: string) {
+    return {
+      name,
+      model,
+    };
+  }
+
+  @Get('/:device/settings')
+  getSettings(
+    @Param('device') id: string,
+    @Query('format') format: string,
+    @Header('authorization') token: string,
+  ) {
+    return {
+      device: id,
+      format,
+      authenticated: !!token,
+    };
+  }
 }

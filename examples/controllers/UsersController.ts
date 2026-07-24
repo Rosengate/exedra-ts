@@ -56,8 +56,8 @@ export default class UsersController extends Controller {
   @Get('/:id')
   @Name('users.show')
   @Transformer(UserTransformer)
-  getUser() {
-    return users[0];
+  getUser(id: string) {
+    return users.find((u) => u.id === Number(id)) || users[0];
   }
 
   @Post('')

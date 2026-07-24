@@ -2,8 +2,12 @@ import { Group } from './group';
 import { Route } from './route';
 
 export class Factory {
+  namedParamAutoInject: boolean = false;
+
   createGroup(routes: any[] = [], parentRoute?: Route): Group {
-    return new Group(this, parentRoute || null, routes);
+    const group = new Group(this, parentRoute || null, routes);
+    group.namedParamAutoInject = this.namedParamAutoInject;
+    return group;
   }
 
   createRoute(group: Group, name: string, properties: Record<string, any>): Route {

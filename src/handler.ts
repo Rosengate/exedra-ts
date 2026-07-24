@@ -13,6 +13,7 @@ export interface ExedraOptions {
   controller: Function;
   middlewares?: Function[];
   decorators?: Function[];
+  namedParamAutoInject?: boolean;
 }
 
 class Handler {
@@ -82,6 +83,7 @@ class Handler {
 
       const properties: Record<string, any> = this.buildProperties(methodMeta);
       properties.controller = controllerClass.name;
+      properties.controllerClass = controllerClass;
       properties.action = methodName;
 
       let childClass: Function | undefined;
@@ -200,7 +202,9 @@ class Handler {
 export function createExedra(app: express.Application, options: ExedraOptions): Group {
   const handler = new Handler();
   const factory = new Factory();
+  factory.namedParamAutoInject = options.namedParamAutoInject || false;
   const rootGroup = handler.resolveGroup(factory, options.controller);
+  rootGroup.namedParamAutoInject = options.namedParamAutoInject || false;
 
   if (options.middlewares) {
     for (const mw of options.middlewares) {

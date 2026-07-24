@@ -26,7 +26,7 @@ app.use((_req: express.Request, res: express.Response, next: express.NextFunctio
 });
 
 // Wire up exedra routing
-const rootGroup = createExedra(app, { controller: RootController });
+const rootGroup = createExedra(app, { controller: RootController, namedParamAutoInject: true });
 
 const PORT = process.env.PORT || 3000;
 

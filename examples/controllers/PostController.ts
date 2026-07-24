@@ -51,8 +51,8 @@ class PostController extends Controller {
   @Get('/:id')
   @Name('posts.show')
   @Transformer(PostTransformer)
-  getPost() {
-    return posts[0];
+  getPost(id: string) {
+    return posts.find((p) => p.id === Number(id)) || posts[0];
   }
 
   @Post('')

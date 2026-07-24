@@ -1,6 +1,8 @@
 import express from 'express';
 import { Route, MiddlewareEntry } from './route';
 import { Factory } from './factory';
+import { getParamBindings, ParamBinding } from '../attributes/param';
+import { getParamNames } from '../support/param-names';
 
 export interface RouteInfo {
   method: string;
@@ -19,6 +21,7 @@ export class Group {
   middlewares: MiddlewareEntry[] = [];
   decorators: Function[] = [];
   private controllerClass: string | null = null;
+  namedParamAutoInject: boolean = false;
 
   constructor(factory: Factory, parentRoute: any = null, _routes: any[] = []) {
     this.factory = factory;
@@ -268,9 +271,29 @@ export class Group {
 
     const exec = routeProps.execute;
     if (typeof exec === 'function') {
+      const controllerClass = routeProps.controllerClass;
+      const action = routeProps.action;
+      const useAutoInject = this.namedParamAutoInject;
+
       handlers.push((req, res, next) => {
         try {
-          const result = exec(req, res, next);
+          let args: any[] = [];
+
+          if (controllerClass && action) {
+            const proto = controllerClass.prototype;
+            const bindings = getParamBindings(proto, action);
+            const hasDecorators = Object.keys(bindings).length > 0;
+
+            if (hasDecorators) {
+              args = resolveFromDecorators(bindings, req, res, next);
+            } else if (useAutoInject) {
+              args = resolveFromNames(exec, req, res, next);
+            }
+          } else if (useAutoInject) {
+            args = resolveFromNames(exec, req, res, next);
+          }
+
+          const result = exec(...args);
           if (result && typeof result.then === 'function') {
             result.then((value: any) => {
               if (value !== undefined && !res.headersSent) {
@@ -288,4 +311,70 @@ export class Group {
 
     return handlers;
   }
+}
+
+function resolveFromDecorators(
+  bindings: Record<number, ParamBinding>,
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): any[] {
+  const maxIndex = Math.max(...Object.keys(bindings).map(Number));
+  const args: any[] = [];
+
+  for (let i = 0; i <= maxIndex; i++) {
+    const binding = bindings[i];
+    if (!binding) {
+      args.push(undefined);
+      continue;
+    }
+
+    switch (binding.type) {
+      case 'param':
+        args.push(binding.key ? (req.params as any)?.[binding.key] : req.params);
+        break;
+      case 'body':
+        args.push(binding.key ? (req.body as any)?.[binding.key] : req.body);
+        break;
+      case 'query':
+        args.push(binding.key ? (req.query as any)?.[binding.key] : req.query);
+        break;
+      case 'header':
+        args.push(binding.key ? req.get(binding.key) : req.headers);
+        break;
+      case 'req':
+        args.push(req);
+        break;
+      case 'res':
+        args.push(res);
+        break;
+      case 'next':
+        args.push(next);
+        break;
+      default:
+        args.push(undefined);
+    }
+  }
+
+  return args;
+}
+
+function resolveFromNames(
+  fn: Function,
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): any[] {
+  const paramNames = getParamNames(fn);
+  const routeParams = (req.params || {}) as Record<string, string>;
+
+  return paramNames.map(name => {
+    if (name === 'req' || name === 'request') return req;
+    if (name === 'res' || name === 'response') return res;
+    if (name === 'next') return next;
+    if (name === 'body') return req.body;
+    if (name === 'query') return req.query;
+    if (name in routeParams) return routeParams[name];
+    return undefined;
+  });
 }
