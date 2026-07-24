@@ -7,15 +7,18 @@ export default class DeviceScreensController extends Controller {
         req: express.Request,
         res: express.Response,
         next: express.NextFunction,
-        deviceId: string
     ) {
+        console.log(req.params.deviceId) // doesn't work
+
         next();
     }
 
     @Path('/:screenId')
-    get(deviceId: string) {
+    get(screenId: string, deviceId: string, req: express.Request) {
         return [{
-            hello: deviceId
+            screenId: screenId,
+            deviceId: deviceId, // doesn't work
+            deviceIdFromRequest: req.params.deviceId // doesn't work
         }];
     }
 }

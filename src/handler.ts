@@ -32,6 +32,11 @@ class Handler {
       : new (controllerClass as any)();
 
     const classMeta = getMetadata(controllerClass);
+
+    if (classMeta.path) {
+      group.basePath = classMeta.path;
+    }
+
     const proto = controllerClass.prototype;
     const methodNames = Object.getOwnPropertyNames(proto);
 

@@ -21,6 +21,7 @@ export class Group {
   decorators: Function[] = [];
   private controllerClass: string | null = null;
   namedParamAutoInject: boolean = false;
+  basePath: string = '';
 
   constructor(factory: Factory, parentRoute: any = null, _routes: any[] = []) {
     this.factory = factory;
@@ -200,13 +201,15 @@ export class Group {
 
   listRoutes(basePath: string = ''): RouteInfo[] {
     const results: RouteInfo[] = [];
+    const groupPrefix = this.basePath && !this.parent ? this.basePath : '';
+    const effectiveBase = groupPrefix + basePath;
 
     for (const route of this.routes) {
       if (route.asFailRoute || !route.requestable) continue;
 
       const childGroup: Group | undefined = route.properties._childGroup;
       const routePath = route.path || '';
-      const fullPath = basePath + (routePath ? '/' + routePath.replace(/^\//, '') : '');
+      const fullPath = effectiveBase + (routePath ? '/' + routePath.replace(/^\//, '') : '');
 
       if (childGroup) {
         results.push(...childGroup.listRoutes(fullPath));
@@ -228,23 +231,25 @@ export class Group {
   }
 
   registerOnRouter(router: express.Router): void {
+    this._registerRoutes(router, this.basePath && !this.parent ? this.basePath : '');
+  }
+
+  private _registerRoutes(router: express.Router, prefix: string): void {
     for (const route of this.routes) {
       if (route.asFailRoute || !route.requestable) continue;
 
       const childGroup: Group | undefined = route.properties._childGroup;
-      const basePath = route.path || '';
+      const routePath = route.path || '';
+      const fullPath = prefix + '/' + routePath.replace(/^\//, '');
 
       if (childGroup) {
-        const childRouter = express.Router();
-        childGroup.registerOnRouter(childRouter);
-        const mountPath = '/' + basePath.replace(/^\//, '');
-        router.use(mountPath, childRouter);
+        childGroup._registerRoutes(router, fullPath);
+        continue;
       }
 
       if (!route.method) continue;
 
       const verb = route.method.toLowerCase() as keyof express.Router;
-      const fullPath = '/' + basePath.replace(/^\//, '');
 
       if (typeof router[verb] === 'function') {
         (router[verb] as any)(fullPath || '/', ...this.buildHandlers(route));
@@ -289,8 +294,8 @@ export class Group {
             } else if (useAutoInject) {
               args = resolveFromParamNames(paramNames, req, res, next);
             }
-          } else if (useAutoInject) {
-            args = resolveFromParamNames(paramNames, req, res, next);
+          } else {
+            args = [req, res, next];
           }
 
           const result = exec(...args);
