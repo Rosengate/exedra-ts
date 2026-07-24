@@ -1,23 +1,145 @@
-# exedra-ts
+# @rosengate/exedra-ts
 
 Class/convention-based routing for Express.js. A TypeScript port of [exedra-php](https://github.com/rosengate/exedra)'s Routeller system.
 
 Define your routes through **method name conventions** and **decorators** on controller classes. No manual `app.get()` / `app.post()` calls — the framework reads your controllers and wires Express under the hood.
 
-## Installation
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 16 or later
+- [TypeScript](https://www.typescriptlang.org/) 5 or later
+
+### Step 1: Install
 
 ```bash
 npm i @rosengate/exedra-ts express reflect-metadata
+npm i -D @types/express typescript
 ```
 
-**Requirements**: TypeScript with `experimentalDecorators` and `emitDecoratorMetadata` enabled.
+### Step 2: Configure TypeScript
+
+Your `tsconfig.json` **must** include these two options or decorators won't work:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "ES2022",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true
+  }
+}
+```
+
+### Step 3: Create Your First Controller
+
+Create a file `src/controllers/UserController.ts`:
+
+```typescript
+import express from 'express';
+import { Controller, Path, Get, Post, Param, Body } from '@rosengate/exedra-ts';
+
+@Path('/users')
+export default class UserController extends Controller {
+  // middleware* prefix = runs for ALL routes in this controller
+  middlewareAuth(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) {
+    if (!req.headers.authorization) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    next();
+  }
+
+  // verb-only method = maps to the group's base path
+  get() {
+    return {
+      data: [
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+      ],
+    };
+  }
+
+  // @Param decorator = reads from req.params
+  @Get('/:id')
+  getUser(@Param('id') id: string) {
+    return { id, name: 'Alice' };
+  }
+
+  // @Body decorator = reads from req.body
+  @Post('')
+  createUser(@Body('name') name: string) {
+    return { id: 3, name };
+  }
+}
+```
+
+### Step 4: Create a Root Controller
+
+Create `src/controllers/RootController.ts`:
+
+```typescript
+import { Controller } from '@rosengate/exedra-ts';
+import UserController from './UserController';
+
+export default class RootController extends Controller {
+  // group* prefix = returns a child controller for subrouting
+  groupUsers() {
+    return UserController;
+  }
+}
+```
+
+### Step 5: Bootstrap
+
+Create `src/app.ts`:
+
+```typescript
+import 'reflect-metadata';
+import express from 'express';
+import { createExedra } from '@rosengate/exedra-ts';
+import RootController from './controllers/RootController';
+
+const app = express();
+app.use(express.json());
+
+createExedra(app, { controller: RootController });
+
+app.listen(3000, () => {
+  console.log('Server running on http://localhost:3000');
+});
+```
+
+### Step 6: Run
+
+```bash
+npx ts-node src/app.ts
+```
+
+Test it:
+
+```bash
+curl http://localhost:3000/users          # GET /users
+curl http://localhost:3000/users/1        # GET /users/1
+curl -X POST -H "Content-Type: application/json" -d '{"name":"Charlie"}' http://localhost:3000/users
+```
+
+---
 
 ## Quick Start
 
 ```typescript
 import 'reflect-metadata';
 import express from 'express';
-import { Controller, Path, Get, Post, createExedra } from 'exedra-ts';
+import { Controller, Path, Get, Post, createExedra } from '@rosengate/exedra-ts';
 
 // --- Root controller (subrouting) ---
 class RootController extends Controller {
@@ -32,9 +154,9 @@ class RootController extends Controller {
 // --- Web routes ---
 @Path('/')
 class WebController extends Controller {
-  middlewareCors(context: Context, next: () => Promise<any>) {
-    context.res.setHeader('Access-Control-Allow-Origin', '*');
-    return next();
+  middlewareCors(req: express.Request, res: express.Response, next: express.NextFunction) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    next();
   }
 
   @Get('/')
@@ -51,16 +173,16 @@ class WebController extends Controller {
 // --- API routes ---
 @Path('/apis')
 class ApisController extends Controller {
-  middlewareLog(context: Context, next: () => Promise<any>) {
-    console.log(`[${new Date().toISOString()}] ${context.req.method} ${context.req.path}`);
-    return next();
+  middlewareLog(req: express.Request, _res: express.Response, next: express.NextFunction) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
   }
 
-  get(context: Context) {
+  get() {
     return [{ id: 1, name: 'John' }];
   }
 
-  post(context: Context) {
+  post() {
     return { created: true };
   }
 
@@ -115,9 +237,9 @@ The verb prefix determines the **HTTP method only**. The suffix is used for the 
 @Path('/users')
 class UserController extends Controller {
   get() { }                          // GET  /users
-  post(context: Context) { }         // POST /users
-  put(context: Context) { }          // PUT  /users
-  delete(context: Context) { }       // DELETE /users
+  post() { }                         // POST /users
+  put() { }                          // PUT  /users
+  delete() { }                       // DELETE /users
 
   @Path('/profile')
   getProfile() { }                   // GET  /users/profile
@@ -147,21 +269,30 @@ class SearchController extends Controller {
 
 ### Method-Based Middleware
 
-Define middleware as methods on the controller using the `middleware*` prefix:
+Define middleware as methods on the controller using the `middleware*` prefix. Middleware methods receive Express `(req, res, next)`:
 
 ```typescript
 @Path('/admin')
 class AdminController extends Controller {
-  middlewareAuth(context: Context, next: () => Promise<any>) {
-    if (!context.req.session.user) {
-      return context.redirect('/login');
+  middlewareAuth(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) {
+    if (!req.session.user) {
+      res.redirect('/login');
+      return;
     }
-    return next();
+    next();
   }
 
-  middlewareRateLimit(context: Context, next: () => Promise<any>) {
+  middlewareRateLimit(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) {
     // rate limiting logic
-    return next();
+    next();
   }
 
   @Get('/dashboard')
@@ -191,8 +322,8 @@ class ApiController extends Controller {
 @Middleware(CorsMiddleware)
 @Path('/api')
 class ApiController extends Controller {
-  middlewareAuth(context: Context, next: () => Promise<any>) {
-    return next();
+  middlewareAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+    next();
   }
 
   @Get('/users')
@@ -208,8 +339,8 @@ class ApiController extends Controller {
 ```typescript
 @Path('/admin')
 class AdminController extends Controller {
-  middlewareAuth(context: Context, next: () => Promise<any>) {
-    return next();
+  middlewareAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+    next();
   }
 
   groupSettings() {
@@ -293,8 +424,8 @@ Both modes ensure `req.params` has ALL params from ALL path segments:
 // @Get('/:screenId') on handler
 // GET /dev123/screens/screen456
 
-req.params.deviceId  // "dev123" ✅
-req.params.screenId  // "screen456" ✅
+req.params.deviceId  // "dev123"
+req.params.screenId  // "screen456"
 ```
 
 **Class-level `@Path`**: Set the base path for all routes in a controller. The path is stored as `group.basePath` and applied as a prefix during registration.
@@ -317,8 +448,13 @@ Decorator methods wrap the response for all routes in the controller:
 ```typescript
 @Path('/api')
 class ApiController extends Controller {
-  decorateTransform(context: Context, next: () => Promise<any>) {
-    const result = await next();
+  decorateTransform(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) {
+    const result = next();
+    // Wrap result before sending
     return { data: result, timestamp: Date.now() };
   }
 
@@ -328,6 +464,41 @@ class ApiController extends Controller {
     // Response: { data: [...], timestamp: 1234567890 }
   }
 }
+```
+
+## Parameter Injection
+
+### Decorator-Based (always active)
+
+```typescript
+import { Param, Body, Query, Header, Req, Res } from '@rosengate/exedra-ts';
+
+class UserController extends Controller {
+  @Get('/:id')
+  getUser(@Param('id') id: string) { return { id }; }
+
+  @Post('')
+  createUser(@Body('name') name: string, @Body('email') email: string) { ... }
+
+  @Get('/search')
+  search(@Query('q') query: string) { ... }
+
+  @Get('/auth')
+  checkAuth(@Header('authorization') token: string) { ... }
+
+  @Get('/raw')
+  getRaw(@Req() req: express.Request) { return req.ip; }
+}
+```
+
+### Named Auto-Injection (opt-in)
+
+```typescript
+createExedra(app, { controller: RootController, namedParamAutoInject: true });
+
+// Parameter names resolve automatically:
+getDevice(device: string) { return { device }; }        // req.params.device
+getUsers(limit: number) { return { limit }; }            // req.query.limit
 ```
 
 ## Attributes Reference
@@ -348,13 +519,23 @@ class ApiController extends Controller {
 | `@Config(key, val)` | class + method | Yes | Configuration values |
 | `@Validation(rules)` | class + method | No | Validation rules (as route state) |
 | `@Transformer(Class)` | class + method | No | Transformer class (as route state) |
+| `@Param(key?)` | parameter | Yes | Reads from `req.params[key]` |
+| `@Body(key?)` | parameter | Yes | Reads from `req.body[key]` |
+| `@Query(key?)` | parameter | Yes | Reads from `req.query[key]` |
+| `@Header(key?)` | parameter | Yes | Reads from `req.headers[key]` |
+| `@Req()` | parameter | No | Raw Express Request |
+| `@Res()` | parameter | No | Raw Express Response |
+| `@Next()` | parameter | No | Express NextFunction |
+| `@State(key?)` | parameter | Yes | Reads from route state |
+| `@Flag(name?)` | parameter | Yes | Checks if flag is set |
+| `@Series(key?)` | parameter | Yes | Reads from route series |
 
 ## Validation
 
 Store validation rules via `@Validation` and provide your own validator:
 
 ```typescript
-import { createValidationMiddleware, Validation } from 'exedra-ts';
+import { createValidationMiddleware, Validation } from '@rosengate/exedra-ts';
 
 class UserController extends Controller {
   @Path('/users')
@@ -378,7 +559,7 @@ app.use(createValidationMiddleware(validate));
 Transform responses via `@Transformer`. The transformer is an object with a `transform` method:
 
 ```typescript
-import { Transformer, createTransformerMiddleware } from 'exedra-ts';
+import { Transformer, createTransformerMiddleware } from '@rosengate/exedra-ts';
 
 class UserTransformer {
   transform(user: any) {
@@ -404,7 +585,7 @@ app.use(createTransformerMiddleware());
 exedra-ts includes a lightweight IoC container with three registries:
 
 ```typescript
-import { Container } from 'exedra-ts';
+import { Container } from '@rosengate/exedra-ts';
 
 const container = new Container();
 
@@ -424,47 +605,12 @@ container.resolve('hash');         // the function
 container.canResolve('db');        // true
 ```
 
-## Context
-
-The `Context` object is available in middleware methods and route handlers. It provides access to the request, response, parameters, and state:
-
-```typescript
-class UsersController extends Controller {
-  @Path('/users/:id')
-  getProfile(context: Context) {
-    const id = context.param('id');
-    const auth = context.state('auth');
-    const isAjax = context.hasFlag('ajax');
-
-    context.json({ id, auth, isAjax });
-  }
-}
-```
-
-### Context API
-
-| Method | Description |
-|---|---|
-| `param(name)` | Get route parameter |
-| `hasParam(name)` | Check if parameter exists |
-| `state(key, default?)` | Get state value (merged from route chain) |
-| `hasState(key)` | Check if state exists |
-| `hasFlag(flag)` | Check if flag is set |
-| `flags()` | Get all flags |
-| `series(key)` | Get series values |
-| `hasSeries(key)` | Check if series exists |
-| `next()` | Call next middleware in the pipeline |
-| `redirect(url)` | Redirect to URL |
-| `json(data)` | Send JSON response |
-| `send(body?)` | Send response body |
-| `status(code)` | Set status code |
-
 ## Router Primitives
 
 These are the internal routing objects, available for advanced use:
 
 ```typescript
-import { Route, Group, Finding, CallStack, Call, Factory } from 'exedra-ts';
+import { Route, Group, Finding, CallStack, Call, Factory } from '@rosengate/exedra-ts';
 ```
 
 | Class | Description |

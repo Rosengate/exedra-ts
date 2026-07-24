@@ -114,7 +114,7 @@ HTTP Request
 Controllers extend the `Controller` base class. They are **singletons** — the class is just a static bag for routing, no request-scoped state on the instance.
 
 ```typescript
-import { Controller, Path, Get } from 'exedra-ts';
+import { Controller, Path, Get } from '@rosengate/exedra-ts';
 
 @Path('/users')
 class UsersController extends Controller {
@@ -205,7 +205,7 @@ Two approaches, layered:
 
 **Decorators** (always active, no config needed):
 ```typescript
-import { Param, Body, Query, Header, Req } from 'exedra-ts';
+import { Param, Body, Query, Header, Req } from '@rosengate/exedra-ts';
 
 getDevice(@Param('device') id: string) { return { id }; }
 createUser(@Body('name') name: string, @Body('email') email: string) { ... }
@@ -332,7 +332,7 @@ module.exports = {
 9. **Verb prefix does NOT set path.** `getProducts()` → route name `get-products`, HTTP method GET, but path stays at group base. Use `@Path` explicitly.
 10. **Subrouting path merging**: parent path + child `@Path` are concatenated.
 11. **IDEs may not auto-import `express`** from peer dependency. Use `@Param`/`@Body`/etc decorators instead.
-12. **Import from `'exedra-ts'`** in user code, from `'../../src'` in examples, from relative `'../src/...'` in tests.
+12. **Import from `'@rosengate/exedra-ts'`** in user code, from `'../../src'` in examples, from relative `'../src/...'` in tests.
 
 ## 8. Known Quirks / Gotchas
 
