@@ -185,7 +185,19 @@ class RootController extends Controller {
 }
 ```
 
-The handler recursively resolves child controllers and mounts them via `router.use('/path', childRouter)`.
+The handler recursively resolves child controllers. There are two routing modes controlled by `useFlatRouting`:
+
+**Express mode (default, `useFlatRouting: false`)**: Child groups get their own `express.Router({ mergeParams: true })`, mounted via `router.use()`. Express merges parent params into child `req.params` automatically. This preserves Express sub-router isolation — each group's routes live on their own router.
+
+**Flat mode (`useFlatRouting: true`)**: All routes from all groups are registered directly on the parent Express Router with accumulated full paths. No sub-routers are used. This is the original exedra-ts approach and was the only mode before `useFlatRouting` was added.
+
+Both modes ensure `req.params` has ALL params from ALL path segments (`:deviceId`, `:screenId`, etc.).
+
+**Class-level `@Path`** works in two contexts:
+- **Root controller**: Stored as `group.basePath`, applied as a prefix to all routes. So `@Path('/devices')` at class level means all routes in that controller are under `/devices/*`.
+- **Child controller** (returned from `group*`): The class-level `@Path` is merged into the parent route's properties by the handler. So `@Path('/users')` on a child controller means routes are at `{parent}/users/*`.
+
+**Why both modes exist**: Express mode is the standard, idiomatic way to handle sub-routing with `mergeParams: true`. Flat mode was the original approach that directly registers all routes on one router. Flat mode is retained for cases where Express sub-router behavior is undesirable. Default is Express mode.
 
 ### 3.5 Parameter Injection
 
@@ -210,6 +222,15 @@ createExedra(app, { controller: RootController, namedParamAutoInject: true });
 getDevice(device: string) { return { device }; }        // req.params.device
 getUsers(limit: number) { return { limit }; }            // req.query.limit
 handler(req: any) { return req.ip; }                     // Express Request
+```
+
+**Routing modes** (controlled by `useFlatRouting`):
+```typescript
+// Default — Express sub-routers with mergeParams
+createExedra(app, { controller: RootController });
+
+// Flat mode — direct registration on parent router
+createExedra(app, { controller: RootController, useFlatRouting: true });
 ```
 
 **Resolution priority**: Decorator > named auto-injection > undefined.
@@ -330,6 +351,10 @@ module.exports = {
 7. **`listRoutes()` trims trailing slashes**: Paths like `/devices/` are normalized to `/devices`.
 
 8. **`PARAM_BINDINGS` Symbol on prototypes**: Parameter decorators store metadata on `target` (the prototype). `getParamBindings(target, propertyKey)` reads from the same prototype. The handler passes `controllerClass.prototype` and the method name.
+
+9. **Direct route registration (not sub-router mounting)**: All routes from child groups are registered directly on the parent Express Router with full accumulated paths. This is intentional — Express `router.use()` mounting does not merge mount path params into `req.params`. Direct registration ensures all params (`:deviceId`, `:screenId`, etc.) are available everywhere.
+
+10. **`useFlatRouting` config**: When `false` (default), Express `router.use({ mergeParams: true })` handles param merging. When `true`, flat direct registration is used. Both ensure all params are available, but Express mode provides proper sub-router isolation.
 
 ## 9. PHP Origin Reference
 

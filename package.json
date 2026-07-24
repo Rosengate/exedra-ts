@@ -10,9 +10,9 @@
   "scripts": {
     "build": "tsc",
     "test": "jest",
-    "dev": "ts-node --project tsconfig.example.json examples/app.ts",
-    "dev:watch": "ts-node-dev --respawn --project tsconfig.example.json examples/app.ts",
-    "routes": "ts-node --project tsconfig.example.json examples/app.ts --routes",
+    "example": "ts-node --project tsconfig.example.json examples/app.ts",
+    "example:watch": "ts-node-dev --respawn --project tsconfig.example.json examples/app.ts",
+    "example:routes": "ts-node --project tsconfig.example.json examples/app.ts --routes",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {

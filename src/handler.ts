@@ -15,6 +15,7 @@ export interface ExedraOptions {
   middlewares?: Function[];
   decorators?: Function[];
   namedParamAutoInject?: boolean;
+  useFlatRouting?: boolean;
 }
 
 class Handler {
@@ -223,8 +224,10 @@ export function createExedra(app: express.Application, options: ExedraOptions): 
   const handler = new Handler();
   const factory = new Factory();
   factory.namedParamAutoInject = options.namedParamAutoInject || false;
+  factory.useFlatRouting = options.useFlatRouting || false;
   const rootGroup = handler.resolveGroup(factory, options.controller);
   rootGroup.namedParamAutoInject = options.namedParamAutoInject || false;
+  rootGroup.useFlatRouting = options.useFlatRouting || false;
 
   if (options.middlewares) {
     for (const mw of options.middlewares) {

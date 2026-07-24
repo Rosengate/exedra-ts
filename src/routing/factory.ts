@@ -3,10 +3,12 @@ import { Route } from './route';
 
 export class Factory {
   namedParamAutoInject: boolean = false;
+  useFlatRouting: boolean = false;
 
   createGroup(routes: any[] = [], parentRoute?: Route): Group {
     const group = new Group(this, parentRoute || null, routes);
     group.namedParamAutoInject = this.namedParamAutoInject;
+    group.useFlatRouting = this.useFlatRouting;
     return group;
   }
 

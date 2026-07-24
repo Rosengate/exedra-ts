@@ -26,7 +26,11 @@ app.use((_req: express.Request, res: express.Response, next: express.NextFunctio
 });
 
 // Wire up exedra routing
-const rootGroup = createExedra(app, { controller: RootController, namedParamAutoInject: true });
+const rootGroup = createExedra(app, {
+  controller: RootController,
+  namedParamAutoInject: true,
+  useFlatRouting: true
+});
 
 const PORT = process.env.PORT || 3000;
 
@@ -49,17 +53,5 @@ if (process.argv.includes('--routes')) {
 }
 
 app.listen(PORT, () => {
-  console.log('');
   console.log('  exedra-ts example app running');
-  console.log('');
-  console.log(`  http://localhost:${PORT}/`);
-  console.log(`  http://localhost:${PORT}/health`);
-  console.log(`  http://localhost:${PORT}/users`);
-  console.log(`  http://localhost:${PORT}/users/1`);
-  console.log(`  http://localhost:${PORT}/posts`);
-  console.log(`  http://localhost:${PORT}/posts/1`);
-  console.log(`  http://localhost:${PORT}/admin`);
-  console.log(`  http://localhost:${PORT}/admin/settings`);
-  console.log(`  http://localhost:${PORT}/admin/stats`);
-  console.log('');
 });

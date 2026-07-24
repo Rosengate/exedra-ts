@@ -21,6 +21,7 @@ export class Group {
   decorators: Function[] = [];
   private controllerClass: string | null = null;
   namedParamAutoInject: boolean = false;
+  useFlatRouting: boolean = false;
   basePath: string = '';
 
   constructor(factory: Factory, parentRoute: any = null, _routes: any[] = []) {
@@ -231,10 +232,21 @@ export class Group {
   }
 
   registerOnRouter(router: express.Router): void {
-    this._registerRoutes(router, this.basePath && !this.parent ? this.basePath : '');
+    if (this.useFlatRouting) {
+      const prefix = this.basePath && !this.parent ? this.basePath : '';
+      this._registerRoutesFlat(router, prefix);
+    } else {
+      if (this.basePath && !this.parent) {
+        const subRouter = express.Router();
+        this._registerRoutesExpress(subRouter);
+        router.use(this.basePath, subRouter);
+      } else {
+        this._registerRoutesExpress(router);
+      }
+    }
   }
 
-  private _registerRoutes(router: express.Router, prefix: string): void {
+  private _registerRoutesFlat(router: express.Router, prefix: string): void {
     for (const route of this.routes) {
       if (route.asFailRoute || !route.requestable) continue;
 
@@ -243,13 +255,38 @@ export class Group {
       const fullPath = prefix + '/' + routePath.replace(/^\//, '');
 
       if (childGroup) {
-        childGroup._registerRoutes(router, fullPath);
+        childGroup._registerRoutesFlat(router, fullPath);
         continue;
       }
 
       if (!route.method) continue;
 
       const verb = route.method.toLowerCase() as keyof express.Router;
+
+      if (typeof router[verb] === 'function') {
+        (router[verb] as any)(fullPath || '/', ...this.buildHandlers(route));
+      }
+    }
+  }
+
+  private _registerRoutesExpress(router: express.Router): void {
+    for (const route of this.routes) {
+      if (route.asFailRoute || !route.requestable) continue;
+
+      const childGroup: Group | undefined = route.properties._childGroup;
+      const routePath = route.path || '';
+
+      if (childGroup) {
+        const childRouter = express.Router({ mergeParams: true });
+        childGroup._registerRoutesExpress(childRouter);
+        router.use('/' + routePath.replace(/^\//, ''), childRouter);
+        continue;
+      }
+
+      if (!route.method) continue;
+
+      const verb = route.method.toLowerCase() as keyof express.Router;
+      const fullPath = '/' + routePath.replace(/^\//, '');
 
       if (typeof router[verb] === 'function') {
         (router[verb] as any)(fullPath || '/', ...this.buildHandlers(route));
@@ -293,6 +330,8 @@ export class Group {
               args = resolveFromDecorators(bindings, req, res, next, routeProps);
             } else if (useAutoInject) {
               args = resolveFromParamNames(paramNames, req, res, next);
+            } else {
+              args = [req, res, next];
             }
           } else {
             args = [req, res, next];

@@ -270,6 +270,46 @@ class AdminController extends Controller {
 }
 ```
 
+### How Routing Works Under the Hood
+
+There are two routing modes, controlled by the `useFlatRouting` config option:
+
+```typescript
+// Default — Express sub-routers with mergeParams
+createExedra(app, { controller: RootController });
+
+// Flat mode — direct registration on parent router
+createExedra(app, { controller: RootController, useFlatRouting: true });
+```
+
+**Express mode (default)**: Each child group gets its own `express.Router({ mergeParams: true })`, mounted via `router.use()`. Express merges parent params into child `req.params` automatically. This is the standard, idiomatic Express approach.
+
+**Flat mode**: All routes from all groups are registered directly on the parent Express Router with accumulated full paths. No sub-routers are used. This was the original approach and is retained for cases where Express sub-router behavior is undesirable.
+
+Both modes ensure `req.params` has ALL params from ALL path segments:
+
+```typescript
+// @Path('/:deviceId/screens') on child controller
+// @Get('/:screenId') on handler
+// GET /dev123/screens/screen456
+
+req.params.deviceId  // "dev123" ✅
+req.params.screenId  // "screen456" ✅
+```
+
+**Class-level `@Path`**: Set the base path for all routes in a controller. The path is stored as `group.basePath` and applied as a prefix during registration.
+
+```typescript
+@Path('/api/v1/users')
+class UserController extends Controller {
+  @Get('/:id')
+  getUser() { }    // Route: GET /api/v1/users/:id
+
+  @Post('')
+  createUser() { } // Route: POST /api/v1/users
+}
+```
+
 ## Decorator Methods
 
 Decorator methods wrap the response for all routes in the controller:
@@ -435,6 +475,28 @@ import { Route, Group, Finding, CallStack, Call, Factory } from 'exedra-ts';
 | `CallStack` | Ordered pipeline of middleware + handler calls |
 | `Call` | A single callable in the pipeline |
 | `Factory` | Creates groups, routes, and findings |
+
+## Configuration
+
+`createExedra` accepts these options:
+
+```typescript
+createExedra(app, {
+  controller: RootController,      // Required — root controller class
+  namedParamAutoInject: false,     // Auto-inject handler params by name from req.params/req.query
+  useFlatRouting: false,           // false = Express sub-routers (default), true = flat direct registration
+  middlewares: [],                  // Global middleware functions
+  decorators: [],                  // Global response decorators
+});
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `controller` | (required) | Root controller class that defines the routing tree |
+| `namedParamAutoInject` | `false` | When `true`, handler method params are resolved by name from `req.params` and `req.query` |
+| `useFlatRouting` | `false` | When `false`, uses Express `router.use()` with `mergeParams: true` (default, recommended). When `true`, registers all routes directly on parent router |
+| `middlewares` | `[]` | Global middleware applied to all routes |
+| `decorators` | `[]` | Global response decorators applied to all routes |
 
 ## TypeScript Configuration
 
