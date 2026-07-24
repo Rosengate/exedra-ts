@@ -1,5 +1,6 @@
 import {Controller, Path} from "../../src";
 import express from "express";
+import DeviceScreenTests from "./DeviceScreenTests";
 
 @Path('/:deviceId/screens')
 export default class DeviceScreensController extends Controller {
@@ -20,5 +21,9 @@ export default class DeviceScreensController extends Controller {
             deviceId: deviceId, // doesn't work
             deviceIdFromRequest: req.params.deviceId // doesn't work
         }];
+    }
+
+    groupTests() {
+        return DeviceScreenTests;
     }
 }
