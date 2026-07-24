@@ -1,5 +1,5 @@
 {
-  "name": "exedra-ts",
+  "name": "exedra",
   "version": "0.1.0",
   "description": "Class/convention-based routing for Express.js",
   "main": "dist/index.js",
