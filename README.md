@@ -7,7 +7,7 @@ Define your routes through **method name conventions** and **decorators** on con
 ## Installation
 
 ```bash
-npm i exedra-ts express reflect-metadata
+npm i @rosengate/exedra-ts express reflect-metadata
 ```
 
 **Requirements**: TypeScript with `experimentalDecorators` and `emitDecoratorMetadata` enabled.
