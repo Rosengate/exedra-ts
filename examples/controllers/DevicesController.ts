@@ -1,7 +1,13 @@
-import { Controller, Path, Get, Post, Param, Body, Query, Header, Req } from '../../src';
+import { Controller, Path, Get, Post, Param, Body, Query, Header, State, Flag, Series } from '../../src';
+import DeviceScreensController from "./DeviceScreensController";
 
+@Path('/devices')
+@State('resource', 'random')
+@Flag('ajax')
 export default class DevicesController extends Controller {
   @Get('')
+  @Series('transformer', 'list')
+  @State('need_auth', true)
   getAll(limit: number, offset: number) {
     return {
       devices: [],
@@ -11,6 +17,8 @@ export default class DevicesController extends Controller {
   }
 
   @Get('/:device')
+  @State('need_auth', true)
+  @Flag('verbose')
   getDevice(@Param('device') id: string) {
     return {
       device: id,
@@ -25,6 +33,10 @@ export default class DevicesController extends Controller {
     };
   }
 
+  groupScreens() {
+    return DeviceScreensController;
+  }
+
   @Get('/:device/settings')
   getSettings(
     @Param('device') id: string,
@@ -35,6 +47,23 @@ export default class DevicesController extends Controller {
       device: id,
       format,
       authenticated: !!token,
+    };
+  }
+
+  @Get('/:device/meta')
+  getMeta(
+    @State('resource') resource: string,
+    @Flag('ajax') isAjax: boolean,
+    @Flag('verbose') isVerbose: boolean,
+    @Series('transformer') transformers: any[],
+    @State('need_auth') needAuth: boolean,
+  ) {
+    return {
+      resource,
+      isAjax,
+      isVerbose,
+      transformers,
+      needAuth,
     };
   }
 }

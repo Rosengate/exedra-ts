@@ -2,6 +2,10 @@ import 'reflect-metadata';
 import { getParamNames } from '../src/support/param-names';
 import { Param, Body, Query, Header, Req, Res, Next } from '../src/attributes/bind';
 import { getParamBindings } from '../src/attributes/param';
+import { State } from '../src/attributes/state';
+import { Flag } from '../src/attributes/flag';
+import { Series } from '../src/attributes/series';
+import { getMetadata } from '../src/metadata';
 
 describe('getParamNames', () => {
   it('extracts named params from function', () => {
@@ -99,5 +103,81 @@ describe('Parameter decorators', () => {
     }
     const bindings = getParamBindings(Plain.prototype, 'doSomething');
     expect(Object.keys(bindings)).toHaveLength(0);
+  });
+});
+
+describe('State/Flag/Series as parameter decorators', () => {
+  class TestController {
+    readState(@State('auth') auth: any, @State('role') role: any) {}
+    readFlag(@Flag('admin') isAdmin: boolean, @Flag('ajax') isAjax: boolean) {}
+    readSeries(@Series('transformers') transformers: any[]) {}
+    mixed(@Param('id') id: string, @State('resource') resource: any) {}
+  }
+
+  const proto = TestController.prototype;
+
+  it('@State as parameter decorator stores state binding', () => {
+    const bindings = getParamBindings(proto, 'readState');
+    expect(bindings[0]).toEqual({ type: 'state', key: 'auth' });
+    expect(bindings[1]).toEqual({ type: 'state', key: 'role' });
+  });
+
+  it('@Flag as parameter decorator stores flag binding', () => {
+    const bindings = getParamBindings(proto, 'readFlag');
+    expect(bindings[0]).toEqual({ type: 'flag', key: 'admin' });
+    expect(bindings[1]).toEqual({ type: 'flag', key: 'ajax' });
+  });
+
+  it('@Series as parameter decorator stores series binding', () => {
+    const bindings = getParamBindings(proto, 'readSeries');
+    expect(bindings[0]).toEqual({ type: 'series', key: 'transformers' });
+  });
+
+  it('mixes State/Flag/Series with other decorators', () => {
+    const bindings = getParamBindings(proto, 'mixed');
+    expect(bindings[0]).toEqual({ type: 'param', key: 'id' });
+    expect(bindings[1]).toEqual({ type: 'state', key: 'resource' });
+  });
+});
+
+describe('State/Flag/Series as class/method decorators', () => {
+  @State('resource', 'user')
+  @Flag('api')
+  @Series('transformer', 'list')
+  class DecoratedController {
+    @State('need_auth', true)
+    @Flag('ajax')
+    @Series('transformer', 'detail')
+    getIndex() {}
+  }
+
+  it('@State stores class-level state', () => {
+    const meta = getMetadata(DecoratedController);
+    expect(meta.states).toEqual({ resource: 'user' });
+  });
+
+  it('@State stores method-level state', () => {
+    const meta = getMetadata(DecoratedController, 'getIndex');
+    expect(meta.states).toEqual({ need_auth: true });
+  });
+
+  it('@Flag stores class-level flag', () => {
+    const meta = getMetadata(DecoratedController);
+    expect(meta.flags).toContain('api');
+  });
+
+  it('@Flag stores method-level flag', () => {
+    const meta = getMetadata(DecoratedController, 'getIndex');
+    expect(meta.flags).toContain('ajax');
+  });
+
+  it('@Series stores class-level series', () => {
+    const meta = getMetadata(DecoratedController);
+    expect(meta.serieses).toEqual({ transformer: 'list' });
+  });
+
+  it('@Series stores method-level series', () => {
+    const meta = getMetadata(DecoratedController, 'getIndex');
+    expect(meta.serieses).toEqual({ transformer: 'detail' });
   });
 });

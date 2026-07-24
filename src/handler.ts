@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import { Controller } from './controller';
 import { getMetadata, RouteMetadata } from './metadata';
 import { kebabCase } from './support/kebab-case';
+import { getParamNames } from './support/param-names';
 import { Factory } from './routing/factory';
 import { Group } from './routing/group';
 import { Route } from './routing/route';
@@ -122,6 +123,7 @@ class Handler {
       }
 
       if (type === 'execute' && typeof controller[methodName] === 'function') {
+        properties.paramNames = getParamNames(controller[methodName]);
         properties.execute = controller[methodName].bind(controller);
       } else if (type === 'subroutes' && childClass) {
         properties.subroutes = childClass;

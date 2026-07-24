@@ -2,7 +2,6 @@ import express from 'express';
 import { Route, MiddlewareEntry } from './route';
 import { Factory } from './factory';
 import { getParamBindings, ParamBinding } from '../attributes/param';
-import { getParamNames } from '../support/param-names';
 
 export interface RouteInfo {
   method: string;
@@ -278,6 +277,7 @@ export class Group {
       handlers.push((req, res, next) => {
         try {
           let args: any[] = [];
+          const paramNames: string[] = routeProps.paramNames || [];
 
           if (controllerClass && action) {
             const proto = controllerClass.prototype;
@@ -287,10 +287,10 @@ export class Group {
             if (hasDecorators) {
               args = resolveFromDecorators(bindings, req, res, next, routeProps);
             } else if (useAutoInject) {
-              args = resolveFromNames(exec, req, res, next);
+              args = resolveFromParamNames(paramNames, req, res, next);
             }
           } else if (useAutoInject) {
-            args = resolveFromNames(exec, req, res, next);
+            args = resolveFromParamNames(paramNames, req, res, next);
           }
 
           const result = exec(...args);
@@ -372,14 +372,14 @@ function resolveFromDecorators(
   return args;
 }
 
-function resolveFromNames(
-  fn: Function,
+function resolveFromParamNames(
+  paramNames: string[],
   req: express.Request,
   res: express.Response,
   next: express.NextFunction,
 ): any[] {
-  const paramNames = getParamNames(fn);
   const routeParams = (req.params || {}) as Record<string, string>;
+  const queryParams = (req.query || {}) as Record<string, string>;
 
   return paramNames.map(name => {
     if (name === 'req' || name === 'request') return req;
@@ -388,6 +388,7 @@ function resolveFromNames(
     if (name === 'body') return req.body;
     if (name === 'query') return req.query;
     if (name in routeParams) return routeParams[name];
+    if (name in queryParams) return queryParams[name];
     return undefined;
   });
 }
