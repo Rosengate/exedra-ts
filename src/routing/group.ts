@@ -285,7 +285,7 @@ export class Group {
             const hasDecorators = Object.keys(bindings).length > 0;
 
             if (hasDecorators) {
-              args = resolveFromDecorators(bindings, req, res, next);
+              args = resolveFromDecorators(bindings, req, res, next, routeProps);
             } else if (useAutoInject) {
               args = resolveFromNames(exec, req, res, next);
             }
@@ -318,9 +318,13 @@ function resolveFromDecorators(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction,
+  routeProps: Record<string, any>,
 ): any[] {
   const maxIndex = Math.max(...Object.keys(bindings).map(Number));
   const args: any[] = [];
+  const states = routeProps.states || {};
+  const flags = routeProps.flags || [];
+  const serieses = routeProps.serieses || {};
 
   for (let i = 0; i <= maxIndex; i++) {
     const binding = bindings[i];
@@ -341,6 +345,15 @@ function resolveFromDecorators(
         break;
       case 'header':
         args.push(binding.key ? req.get(binding.key) : req.headers);
+        break;
+      case 'state':
+        args.push(binding.key ? states[binding.key] : states);
+        break;
+      case 'flag':
+        args.push(binding.key ? flags.includes(binding.key) : flags);
+        break;
+      case 'series':
+        args.push(binding.key ? serieses[binding.key] || [] : serieses);
         break;
       case 'req':
         args.push(req);

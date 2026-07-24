@@ -30,6 +30,7 @@ class Handler {
       ? (controllerClass as any).instance()
       : new (controllerClass as any)();
 
+    const classMeta = getMetadata(controllerClass);
     const proto = controllerClass.prototype;
     const methodNames = Object.getOwnPropertyNames(proto);
 
@@ -82,6 +83,18 @@ class Handler {
       }
 
       const properties: Record<string, any> = this.buildProperties(methodMeta);
+
+      // Merge class-level states, flags, serieses into route properties
+      if (classMeta.states) {
+        properties.states = { ...(classMeta.states || {}), ...(properties.states || {}) };
+      }
+      if (classMeta.flags) {
+        properties.flags = [...(classMeta.flags || []), ...(properties.flags || [])];
+      }
+      if (classMeta.serieses) {
+        properties.serieses = { ...(classMeta.serieses || {}), ...(properties.serieses || {}) };
+      }
+
       properties.controller = controllerClass.name;
       properties.controllerClass = controllerClass;
       properties.action = methodName;
