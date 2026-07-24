@@ -5,12 +5,20 @@ import AdminStatsController from './StatsController';
 
 @Path('/admin')
 class AdminController extends Controller {
-  middlewareAuth(req: express.Request, _res: express.Response, next: express.NextFunction) {
+  middlewareAuth(
+    req: express.Request,
+    _res: express.Response,
+    next: express.NextFunction,
+  ) {
     console.log('[AdminController] Checking auth for admin area');
     next();
   }
 
-  middlewareLog(req: express.Request, _res: express.Response, next: express.NextFunction) {
+  middlewareLog(
+    req: express.Request,
+    _res: express.Response,
+    next: express.NextFunction,
+  ) {
     console.log(`[Admin] ${req.method} ${req.path}`);
     next();
   }
@@ -25,7 +33,10 @@ class AdminController extends Controller {
 
   @Get('')
   getAdminIndex() {
-    return { area: 'admin', message: 'Welcome to admin panel' };
+    return {
+      area: 'admin',
+      message: 'Welcome to admin panel',
+    };
   }
 }
 

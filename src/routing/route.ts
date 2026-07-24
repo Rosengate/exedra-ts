@@ -74,6 +74,14 @@ export class Route {
     return this.properties.subroutes;
   }
 
+  get controller(): string {
+    return this.properties.controller || '';
+  }
+
+  get action(): string {
+    return this.properties.action || '';
+  }
+
   getPath(): string {
     const parentPath = this.group.getParentPath();
     const routePath = this.path;

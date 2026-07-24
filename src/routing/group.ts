@@ -2,6 +2,15 @@ import express from 'express';
 import { Route, MiddlewareEntry } from './route';
 import { Factory } from './factory';
 
+export interface RouteInfo {
+  method: string;
+  path: string;
+  name: string;
+  controller: string;
+  action: string;
+  tag?: string;
+}
+
 export class Group {
   factory: Factory;
   parent: Group | null;
@@ -185,6 +194,35 @@ export class Group {
 
   getFailRoute(): Route | null {
     return this.routes.find(r => r.asFailRoute) || null;
+  }
+
+  listRoutes(basePath: string = ''): RouteInfo[] {
+    const results: RouteInfo[] = [];
+
+    for (const route of this.routes) {
+      if (route.asFailRoute || !route.requestable) continue;
+
+      const childGroup: Group | undefined = route.properties._childGroup;
+      const routePath = route.path || '';
+      const fullPath = basePath + (routePath ? '/' + routePath.replace(/^\//, '') : '');
+
+      if (childGroup) {
+        results.push(...childGroup.listRoutes(fullPath));
+      }
+
+      if (route.method) {
+        results.push({
+          method: route.method,
+          path: (fullPath || '/').replace(/\/+$/, '') || '/',
+          name: route.name,
+          controller: route.controller,
+          action: route.action,
+          tag: route.tag,
+        });
+      }
+    }
+
+    return results;
   }
 
   registerOnRouter(router: express.Router): void {

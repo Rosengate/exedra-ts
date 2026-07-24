@@ -25,7 +25,9 @@ class Handler {
   }
 
   resolveGroupInto(controllerClass: Function, group: Group, factory: Factory): void {
-    const controller = (controllerClass as any).instance();
+    const controller = (controllerClass as any).instance
+      ? (controllerClass as any).instance()
+      : new (controllerClass as any)();
 
     const proto = controllerClass.prototype;
     const methodNames = Object.getOwnPropertyNames(proto);
@@ -79,6 +81,8 @@ class Handler {
       }
 
       const properties: Record<string, any> = this.buildProperties(methodMeta);
+      properties.controller = controllerClass.name;
+      properties.action = methodName;
 
       let childClass: Function | undefined;
 
@@ -139,7 +143,7 @@ class Handler {
 
   private validateGroup(pattern: any): boolean {
     if (typeof pattern === 'function') {
-      return pattern.prototype instanceof Controller || pattern === Controller;
+      return typeof pattern.instance === 'function';
     }
     return false;
   }
@@ -193,7 +197,7 @@ class Handler {
   }
 }
 
-export function createExedra(app: express.Application, options: ExedraOptions): void {
+export function createExedra(app: express.Application, options: ExedraOptions): Group {
   const handler = new Handler();
   const factory = new Factory();
   const rootGroup = handler.resolveGroup(factory, options.controller);
@@ -213,6 +217,8 @@ export function createExedra(app: express.Application, options: ExedraOptions): 
   const router = express.Router();
   rootGroup.registerOnRouter(router);
   app.use(router);
+
+  return rootGroup;
 }
 
 export { Handler };

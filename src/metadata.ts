@@ -13,6 +13,8 @@ export interface RouteMetadata {
   tag?: string;
   execute?: string;
   subroutes?: string;
+  controller?: string;
+  action?: string;
   states?: Record<string, any>;
   serieses?: Record<string, any[]>;
   flags?: string[];

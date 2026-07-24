@@ -1,9 +1,10 @@
 import express from 'express';
 import { Controller, Group } from '../../src';
-import UserController from './UserController';
+import UsersController from './UsersController';
 import PostController from './PostController';
 import HealthController from './HealthController';
 import AdminController from './admin/AdminController';
+import DevicesController from "./DevicesController";
 
 class RootController extends Controller {
   setupRoutes(group: Group) {
@@ -13,16 +14,18 @@ class RootController extends Controller {
         version: '0.1.0',
         endpoints: {
           health: 'GET /health',
-          users: 'GET /users, POST /users, PUT /users/:id, DELETE /users/:id',
+          users:
+            'GET /users, POST /users, PUT /users/:id, DELETE /users/:id',
           posts: 'GET /posts, POST /posts, PATCH /posts/:id',
-          admin: 'GET /admin, GET /admin/settings, GET /admin/stats',
+          admin:
+            'GET /admin, GET /admin/settings, GET /admin/stats',
         },
       });
     });
   }
 
   groupUsers() {
-    return UserController;
+    return UsersController;
   }
 
   groupPosts() {
@@ -35,6 +38,10 @@ class RootController extends Controller {
 
   groupHealth() {
     return HealthController;
+  }
+
+  groupDevices() {
+    return DevicesController;
   }
 }
 

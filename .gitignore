@@ -1,3 +1,4 @@
-exedra-php/*
-sigil/*
-node_modules/*
+exedra-php
+sigil
+node_modules
+.idea

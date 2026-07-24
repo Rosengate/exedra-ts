@@ -5,7 +5,11 @@ import { users, posts } from '../../data';
 class AdminStatsController extends Controller {
   @Get('')
   getStats() {
-    return { totalUsers: users.length, totalPosts: posts.length, uptime: process.uptime() };
+    return {
+      totalUsers: users.length,
+      totalPosts: posts.length,
+      uptime: process.uptime(),
+    };
   }
 }
 

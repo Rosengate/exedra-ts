@@ -26,9 +26,27 @@ app.use((_req: express.Request, res: express.Response, next: express.NextFunctio
 });
 
 // Wire up exedra routing
-createExedra(app, { controller: RootController });
+const rootGroup = createExedra(app, { controller: RootController });
 
 const PORT = process.env.PORT || 3000;
+
+// --routes flag: list all routes and exit
+if (process.argv.includes('--routes')) {
+  const routes = rootGroup.listRoutes();
+  console.log('');
+  console.log(`  Registered routes (${routes.length}):`);
+  console.log('');
+  console.table(
+    routes.map((r) => ({
+      Method: r.method,
+      Path: r.path,
+      Name: r.name,
+      Controller: r.controller,
+      Action: r.action,
+    })),
+  );
+  process.exit(0);
+}
 
 app.listen(PORT, () => {
   console.log('');

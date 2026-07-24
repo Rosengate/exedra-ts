@@ -33,7 +33,7 @@ export { Context } from './runtime/context';
 export { Container } from './container';
 
 export { Route } from './routing/route';
-export { Group } from './routing/group';
+export { Group, type RouteInfo } from './routing/group';
 export { Finding } from './routing/finding';
 export { CallStack } from './routing/callstack';
 export { Call } from './routing/call';
