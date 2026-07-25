@@ -3,8 +3,8 @@ import 'reflect-metadata';
 export const PARAM_BINDINGS = Symbol('exedra:param-bindings');
 
 export interface ParamBinding {
-  type: 'param' | 'body' | 'query' | 'header' | 'req' | 'res' | 'next' | 'state' | 'flag' | 'series';
-  key?: string;
+  type: 'param' | 'body' | 'query' | 'header' | 'req' | 'res' | 'next' | 'state' | 'flag' | 'series' | 'ctx' | 'inject';
+  key?: any;
 }
 
 export function setParamBinding(

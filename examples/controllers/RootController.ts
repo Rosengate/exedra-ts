@@ -5,6 +5,7 @@ import PostController from './PostController';
 import HealthController from './HealthController';
 import AdminController from './admin/AdminController';
 import DevicesController from "./DevicesController";
+import SessionController from './SessionController';
 
 class RootController extends Controller {
   setupRoutes(group: Group) {
@@ -19,6 +20,8 @@ class RootController extends Controller {
           posts: 'GET /posts, POST /posts, PATCH /posts/:id',
           admin:
             'GET /admin, GET /admin/settings, GET /admin/stats',
+          session:
+            'GET /profile, GET /profile/:id, GET /admin/dashboard, GET /admin/inspect',
         },
       });
     });
@@ -42,6 +45,10 @@ class RootController extends Controller {
 
   groupDevices() {
     return DevicesController;
+  }
+
+  groupProfile() {
+    return SessionController;
   }
 }
 

@@ -1,6 +1,7 @@
 import express from 'express';
 import 'reflect-metadata';
 import { Controller } from './controller';
+import { Container } from './container';
 import { getMetadata, RouteMetadata } from './metadata';
 import { kebabCase } from './support/kebab-case';
 import { getParamNames } from './support/param-names';
@@ -16,6 +17,7 @@ export interface ExedraOptions {
   decorators?: Function[];
   namedParamAutoInject?: boolean;
   useFlatRouting?: boolean;
+  container?: Container;
 }
 
 class Handler {
@@ -225,9 +227,11 @@ export function createExedra(app: express.Application, options: ExedraOptions): 
   const factory = new Factory();
   factory.namedParamAutoInject = options.namedParamAutoInject || false;
   factory.useFlatRouting = options.useFlatRouting || false;
+  factory.container = options.container;
   const rootGroup = handler.resolveGroup(factory, options.controller);
   rootGroup.namedParamAutoInject = options.namedParamAutoInject || false;
   rootGroup.useFlatRouting = options.useFlatRouting || false;
+  rootGroup.container = options.container;
 
   if (options.middlewares) {
     for (const mw of options.middlewares) {

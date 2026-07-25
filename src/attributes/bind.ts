@@ -1,4 +1,5 @@
 import { setParamBinding } from './param';
+import { ContainerKey } from '../container';
 
 export function Param(key?: string): ParameterDecorator {
   return (target: any, propertyKey: any, parameterIndex: number) => {
@@ -39,5 +40,17 @@ export function Res(): ParameterDecorator {
 export function Next(): ParameterDecorator {
   return (target: any, propertyKey: any, parameterIndex: number) => {
     setParamBinding(target, propertyKey, parameterIndex, { type: 'next' });
+  };
+}
+
+export function Ctx(): ParameterDecorator {
+  return (target: any, propertyKey: any, parameterIndex: number) => {
+    setParamBinding(target, propertyKey, parameterIndex, { type: 'ctx' });
+  };
+}
+
+export function Inject(token: ContainerKey): ParameterDecorator {
+  return (target: any, propertyKey: any, parameterIndex: number) => {
+    setParamBinding(target, propertyKey, parameterIndex, { type: 'inject', key: token });
   };
 }

@@ -37,7 +37,8 @@ src/
     flag.ts                      @Flag — boolean flags
     config.ts                    @Config — configuration values
     validation.ts                @Validation — validation rules (route state)
-    transformer.ts               @Transformer — transformer class (route state)
+    transformer.ts               @Transformer — transformer class (route state) + createTransformerMiddleware
+    include.ts                    @Include — registers optional includes on transformer class
     param.ts                     ParamBinding interface + Reflect metadata storage
     bind.ts                      @Param, @Body, @Query, @Header, @Req, @Res, @Next
   routing/
@@ -54,7 +55,7 @@ src/
   support/
     kebab-case.ts                camelCase → kebab-case
     dot-array.ts                 Nested dot-notation get/set
-    wireman.ts                   DI parameter resolver (reads emitDecoratorMetadata)
+    wireman.ts                   DI parameter resolver (reads emitDecoratorMetadata) — WAS dead code, now wired in
     param-names.ts               getParamNames() via Function.toString()
 
 tests/
@@ -63,6 +64,16 @@ tests/
   decorators.test.ts
   handler.test.ts
   param-injection.test.ts
+  routing-modes.test.ts
+  attributes.test.ts
+  container.test.ts
+  context.test.ts
+  transformer-include.test.ts
+  middleware-order.test.ts
+  named-param-inject.test.ts
+  example-app.test.ts
+  di-injection.test.ts
+  request-context.test.ts
 
 examples/
   app.ts                         Bootstrap (Express setup + createExedra)
@@ -73,6 +84,7 @@ examples/
     PostController.ts            GET/POST/PATCH /posts
     HealthController.ts          GET /health (verb-only)
     DevicesController.ts         Decorator-based param injection examples
+    SessionController.ts         Request-level Context: middleware registers services, handler injects via @Ctx
     admin/
       AdminController.ts         GET /admin + subrouting
       SettingsController.ts      GET/PUT /admin/settings
@@ -99,12 +111,18 @@ bind.ts ──→ param.ts (setParamBinding)
 HTTP Request
   → Express Router (registered by group.registerOnRouter)
     → Express Router mounting for subroutes (router.use('/path', childRouter))
-      → Middleware pipeline (middleware* methods + @Middleware)
+      → Context creation (per-request, stored on req._exedra_context)
+      → Middleware pipeline (middleware* methods + @Middleware) — 4th param is Context
         → buildHandlers resolves parameters:
             1. Check for @Param/@Body/@Query/etc decorators → use decorator
             2. If namedParamAutoInject enabled → resolve by parameter name
-        → Handler method executes with resolved args
-          → Return value auto-sent as JSON via res.json() (if !res.headersSent)
+            3. If container provided → resolve by type from Container (via design:paramtypes)
+            4. Fill remaining undefined slots with Express args (req, res, next)
+        → Handler method executes with resolved args (returns value, does NOT call res.json)
+        → TransformerMiddleware (always present):
+            - If @Transformer on route: instantiates transformer, calls transform(result),
+              resolves @Include methods from ?include= query param, calls res.json(transformed)
+            - If no @Transformer: passthrough, calls res.json(result)
 ```
 
 ## 3. Key Concepts
@@ -224,6 +242,8 @@ getUsers(limit: number) { return { limit }; }            // req.query.limit
 handler(req: any) { return req.ip; }                     // Express Request
 ```
 
+Reserved names: `req`/`request` (Request), `res`/`response` (Response), `next` (NextFunction), `ctx`/`context` (Context), `body` (req.body), `query` (req.query). Route params take priority over reserved names — use `@Ctx()` or `@Inject()` for explicit injection when there's a naming conflict.
+
 **Routing modes** (controlled by `useFlatRouting`):
 ```typescript
 // Default — Express sub-routers with mergeParams
@@ -233,7 +253,7 @@ createExedra(app, { controller: RootController });
 createExedra(app, { controller: RootController, useFlatRouting: true });
 ```
 
-**Resolution priority**: Decorator > named auto-injection > undefined.
+**Resolution priority**: Decorator > named auto-injection > type-based DI (Container via design:paramtypes) > undefined.
 
 **Middleware methods** (`middleware*`) always receive Express `(req, res, next)` — param injection does NOT apply to them.
 
@@ -241,7 +261,7 @@ createExedra(app, { controller: RootController, useFlatRouting: true });
 
 ```bash
 npm run build         # Compile src/ → dist/
-npm test              # Run Jest (5 test suites, 39 tests)
+npm test              # Run Jest (15 test suites, 191 tests)
 npm run dev           # Start example app on http://localhost:3000
 npm run dev:watch     # Start with auto-reload (ts-node-dev)
 npm run routes        # List all registered routes as a table
@@ -298,7 +318,7 @@ module.exports = {
 
 - Framework: Jest + ts-jest
 - Test files are flat in `tests/` directory
-- 5 suites, 39 tests covering: kebab-case utility, controller singleton, decorator metadata, handler prefix detection, parameter injection decorators
+- 15 suites, 191 tests covering: kebab-case utility, controller singleton, decorator metadata, handler prefix detection, parameter injection decorators, all attribute metadata, container IoC, context class, transformer+includes, middleware order, named param auto-inject, example app integration, type-based DI, request-level context, @Inject explicit injection
 
 ### What is tested
 
@@ -309,21 +329,33 @@ module.exports = {
 | `decorators.test.ts` | @Get/@Post/@Put/@Delete/@Patch store correct metadata |
 | `handler.test.ts` | All 8 prefix parsers (middleware, decorate, setup, execute, group, restful, sub, route) |
 | `param-injection.test.ts` | getParamNames utility + all 7 parameter decorators |
+| `routing-modes.test.ts` | Express vs flat mode: nested params, middleware, mergeParams |
+| `attributes.test.ts` | All 14 attribute decorators: metadata storage, class/method level, merging |
+| `container.test.ts` | Container IoC: service, factory, func, resolve, make, create, canResolve, tokenResolve |
+| `context.test.ts` | Context class: param, state, flag, series, json, send, redirect, status, Container extension |
+| `transformer-include.test.ts` | @Transformer + @Include: transform applied, single/multiple/empty/unknown includes |
+| `middleware-order.test.ts` | Middleware execution order, request modification, short-circuit, @Requestable, @FailRoute |
+| `named-param-inject.test.ts` | namedParamAutoInject: route params, query params, req object, decorator override |
+| `example-app.test.ts` | Full app integration: Root, Users CRUD+auth, Posts CRUD+auth, Health, Admin, Devices |
+| `di-injection.test.ts` | Wireman resolveTypes, Container class keys, type-based DI integration |
+| `request-context.test.ts` | Per-request Context: middleware registration, child scope, isolation, @Ctx, named auto-inject |
+| `di-injection.test.ts` | Wireman resolveTypes, Container class keys, type-based DI integration |
 
 ### What is NOT tested (yet)
 
-- Integration tests (full Express app with real HTTP requests)
-- Subrouting path merging
-- Middleware execution order
-- Transformer/Validation middleware pipeline
-- `listRoutes()` output
-- `namedParamAutoInject` name resolution at runtime
+- `@Head` and `@Options` HTTP methods
+- `@Middleware` attribute-based middleware pipeline (stored in routeProps.middleware)
+- `@Decorator` response decorator pipeline
+- `@FailRoute` catch-all behavior with full integration
+- `Group.findByRequest()` manual route matching
+- `Group.findRoute()` by name
+- `Route.fullProperties()` parent chain merge
 
 ## 7. Code Conventions & Rules
 
 1. **Every controller method must have a prefix or decorator.** Methods without either are skipped.
 2. **Controllers extend `Controller`.** Path set via `@Path('/path')` at class level. No `@Controller` decorator.
-3. **Middleware methods receive Express `(req, res, next)`**, not Context objects.
+3. **Middleware methods receive Express `(req, res, next)` + optional Context as 4th param**, e.g. `middlewareAuth(req, res, next, ctx)`. Context is the per-request container.
 4. **Handler return values are auto-sent as JSON.** If handler calls `res.json()`/`res.send()` directly, it must not return a value (or `buildHandlers` checks `!res.headersSent`).
 5. **Route paths use Express `:param` syntax.** No custom syntax like PHP's `[:id]`.
 6. **Metadata stored via `Reflect.defineMetadata()` with Symbol keys.**
@@ -342,7 +374,7 @@ module.exports = {
 
 3. **Middleware methods receive Express args**: `middlewareAuth(req, res, next)` — NOT a Context. They are registered as Express middleware via `group.addMiddleware(fn)`.
 
-4. **`buildHandlers` auto-sends return values**: If handler returns a value and `!res.headersSent`, it calls `res.json(result)`. If handler needs to send manually (streaming, redirects), return nothing.
+4. **`buildHandlers` stores return values on `req._exedra_result`**: The execute handler stores its return value on `req._exedra_result` and calls `next()`. The TransformerMiddleware (if `@Transformer` present) or ResponseSender (if not) reads from `req._exedra_result` and calls `res.json()`. The handler should never call `res.json()` directly.
 
 5. **`@Middleware` attribute stores metadata but middleware* methods are what actually work**: The `@Middleware(Class)` attribute stores a string/class reference in metadata. The `middleware*` prefix methods are what get registered as Express middleware via `group.addMiddleware()`. The attribute-based middleware pipeline (`@Middleware` + middleware array in route properties) is wired through `buildHandlers` which reads `routeProps.middleware` entries.
 

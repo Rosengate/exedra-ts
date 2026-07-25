@@ -1,8 +1,11 @@
 import express from 'express';
 import { Route, MiddlewareEntry } from './route';
 import { Factory } from './factory';
+import { Container } from '../container';
+import { Context } from '../runtime/context';
 import { getParamBindings, ParamBinding } from '../attributes/param';
 import { createTransformerMiddleware } from '../attributes/transformer';
+import { Wireman } from '../support/wireman';
 
 export interface RouteInfo {
   method: string;
@@ -23,6 +26,7 @@ export class Group {
   private controllerClass: string | null = null;
   namedParamAutoInject: boolean = false;
   useFlatRouting: boolean = false;
+  container?: Container;
   basePath: string = '';
 
   constructor(factory: Factory, parentRoute: any = null, _routes: any[] = []) {
@@ -299,12 +303,27 @@ export class Group {
     const handlers: express.RequestHandler[] = [];
     const routeProps = route.fullProperties();
 
+    // Create per-request Context (before middleware runs)
+    handlers.push((req: any, _res: any, next: any) => {
+      req._exedra_context = new Context(
+        req, _res,
+        {},
+        routeProps.states || {},
+        routeProps.flags || [],
+        routeProps.serieses || {},
+        undefined,
+        this.container,
+      );
+      next();
+    });
+
     const mwEntries: any[] = routeProps.middleware || [];
     for (const entry of mwEntries) {
       const fn = typeof entry === 'function' ? entry : entry.fn;
       if (typeof fn !== 'function') continue;
       handlers.push((req, res, next) => {
-        const result = fn(req, res, next);
+        const ctx = (req as any)._exedra_context;
+        const result = fn(req, res, next, ctx);
         if (result && typeof result.then === 'function') {
           result.catch(next);
         }
@@ -321,6 +340,7 @@ export class Group {
         try {
           let args: any[] = [];
           const paramNames: string[] = routeProps.paramNames || [];
+          const ctx: Context | undefined = req._exedra_context;
 
           if (controllerClass && action) {
             const proto = controllerClass.prototype;
@@ -328,11 +348,40 @@ export class Group {
             const hasDecorators = Object.keys(bindings).length > 0;
 
             if (hasDecorators) {
-              args = resolveFromDecorators(bindings, req, _res, next, routeProps);
-            } else if (useAutoInject) {
-              args = resolveFromParamNames(paramNames, req, _res, next);
-            } else {
+              args = resolveFromDecorators(bindings, req, _res, next, routeProps, ctx);
+            }
+
+            if (useAutoInject) {
+              const namedArgs = resolveFromParamNames(paramNames, req, _res, next, ctx);
+              for (let i = 0; i < Math.max(args.length, namedArgs.length); i++) {
+                if ((i >= args.length || args[i] === undefined) && namedArgs[i] !== undefined) {
+                  args[i] = namedArgs[i];
+                }
+              }
+            }
+
+            // Type-based DI fills remaining undefined/empty slots
+            const wiremanContainer = ctx || this.container;
+            if (wiremanContainer) {
+              const typeArgs = new Wireman(wiremanContainer).resolveTypes(exec);
+              for (let i = 0; i < Math.max(args.length, typeArgs.length); i++) {
+                if ((i >= args.length || args[i] === undefined) && typeArgs[i] !== undefined) {
+                  args[i] = typeArgs[i];
+                }
+              }
+            }
+
+            // Express fallback: fill remaining undefined slots
+            if (args.length === 0) {
               args = [req, _res, next];
+            } else {
+              const expressArgs = [req, _res, next];
+              let expressIdx = 0;
+              for (let i = 0; i < args.length; i++) {
+                if (args[i] === undefined) {
+                  args[i] = expressArgs[expressIdx++];
+                }
+              }
             }
           } else {
             args = [req, _res, next];
@@ -369,6 +418,7 @@ function resolveFromDecorators(
   res: express.Response,
   next: express.NextFunction,
   routeProps: Record<string, any>,
+  ctx?: Context,
 ): any[] {
   const maxIndex = Math.max(...Object.keys(bindings).map(Number));
   const args: any[] = [];
@@ -414,6 +464,13 @@ function resolveFromDecorators(
       case 'next':
         args.push(next);
         break;
+      case 'ctx':
+        args.push(ctx);
+        break;
+      case 'inject': {
+        args.push(ctx?.resolve(binding.key));
+        break;
+      }
       default:
         args.push(undefined);
     }
@@ -427,18 +484,20 @@ function resolveFromParamNames(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction,
+  ctx?: Context,
 ): any[] {
   const routeParams = (req.params || {}) as Record<string, string>;
   const queryParams = (req.query || {}) as Record<string, string>;
 
   return paramNames.map(name => {
+    if (name in routeParams) return routeParams[name];
+    if (name in queryParams) return queryParams[name];
     if (name === 'req' || name === 'request') return req;
     if (name === 'res' || name === 'response') return res;
     if (name === 'next') return next;
+    if (name === 'ctx' || name === 'context') return ctx;
     if (name === 'body') return req.body;
     if (name === 'query') return req.query;
-    if (name in routeParams) return routeParams[name];
-    if (name in queryParams) return queryParams[name];
     return undefined;
   });
 }

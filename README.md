@@ -501,6 +501,145 @@ getDevice(device: string) { return { device }; }        // req.params.device
 getUsers(limit: number) { return { limit }; }            // req.query.limit
 ```
 
+#### Reserved Parameter Names
+
+When using `namedParamAutoInject: true`, these names are reserved:
+
+| Name | Resolves to |
+|---|---|
+| `req`, `request` | Express Request |
+| `res`, `response` | Express Response |
+| `next` | Express NextFunction |
+| `ctx`, `context` | Per-request Context |
+| `body` | `req.body` |
+| `query` | `req.query` |
+
+**Route params take priority**: if your route has `/:context`, the parameter `context` resolves from `req.params.context`, not the Context object. Use `@Ctx()` or `@Inject(Context)` for explicit injection when there's a naming conflict.
+
+### Type-Based Injection (via Container)
+
+Register services by class reference, and handler parameters are auto-injected by type using TypeScript's `emitDecoratorMetadata`:
+
+```typescript
+import { Container, createExedra } from '@rosengate/exedra-ts';
+
+class Database {
+  query(sql: string) { /* ... */ }
+}
+
+class Cache {
+  get(key: string) { /* ... */ }
+}
+
+const container = new Container();
+container.service(Database, new Database());
+container.factory(Cache, () => new Cache());
+
+createExedra(app, { controller: RootController, container });
+
+// Handler — types resolved from Container automatically
+@Get('/:id')
+getUser(db: Database, cache: Cache, @Param('id') id: string) {
+  const user = db.query(`SELECT * FROM users WHERE id = ${id}`);
+  const cached = cache.get(`user:${id}`);
+  return { user, cached };
+}
+```
+
+**Resolution priority**: `@Param`/`@Body`/etc decorators > named auto-inject > type-based DI > `undefined`
+
+**Requirements**:
+- `emitDecoratorMetadata: true` and `experimentalDecorators: true` in tsconfig
+- Must compile with `tsc` (not ts-jest's isolated mode) for `design:paramtypes` metadata to be emitted
+- Primitives (`String`, `Number`, `Boolean`) are never resolved from the Container
+
+### Request-Level Context
+
+Each request gets its own `Context` instance — a per-request Container that inherits from the app Container. Middleware can register request-scoped services, and handlers can inject them via `@Ctx()`:
+
+```typescript
+import { Controller, Path, Get, Ctx, Context } from '@rosengate/exedra-ts';
+
+class User {
+  constructor(public id: number, public name: string) {}
+}
+
+class ProfileController extends Controller {
+  // Middleware: 4th param is the per-request Context
+  middlewareAuth(req: any, res: any, next: any, ctx: Context) {
+    const user = verifyToken(req.headers.authorization);
+    ctx.service(User, user);     // request-scoped — not shared with other requests
+    next();
+  }
+
+  @Get('')
+  getProfile(@Ctx() ctx: Context) {
+    const user = ctx.resolve(User);  // resolved from this request's Context
+    return { id: user.id, name: user.name };
+  }
+}
+```
+
+```
+GET /profile (token: alice)  → { id: 1, name: 'Alice' }
+GET /profile (token: bob)    → { id: 2, name: 'Bob' }   // isolated
+```
+
+**How it works**:
+- A `Context` is created per-request, stored on `req._exedra_context`
+- Middleware receives it as the **4th parameter**: `fn(req, res, next, ctx)`
+- Handlers inject via `@Inject(token)` decorator, `@Ctx()` decorator, named auto-inject, or type-based DI
+- Context is a child scope: `ctx.resolve(X)` checks its own registrations first, then falls back to the app Container
+
+### @Inject — Explicit Token Injection
+
+`@Inject(token)` is the most reliable way to inject services. It works with **any** TypeScript runner (ts-node, ts-node-dev, tsx, etc.) because the token is stored at decoration time, not emitted by the compiler:
+
+```typescript
+import { Controller, Get, Param, Inject, Ctx, Context } from '@rosengate/exedra-ts';
+
+class User {
+  constructor(public id: number, public name: string) {}
+}
+
+class ProfileController extends Controller {
+  middlewareAuth(req: any, res: any, next: any, ctx: Context) {
+    ctx.service(User, verifyToken(req.headers.authorization));
+    next();
+  }
+
+  // Inject User by class token — resolved from per-request Context
+  @Get('/:id')
+  getProfile(@Param('id') id: string, @Inject(User) user: User) {
+    return { id, name: user.name };
+  }
+
+  // Inject by string key — resolved from app Container
+  @Get('/config')
+  getConfig(@Inject('appName') appName: string) {
+    return { appName };
+  }
+}
+```
+
+`@Inject` resolves from the per-request Context first (middleware-registered services), then falls back to the app Container.
+
+**Accessing Context in middleware**: The 4th parameter is always the Context, even if your middleware uses only 3 params:
+
+```typescript
+// This works — ctx is the 4th arg
+middlewareLog(req: any, res: any, next: any, ctx: Context) {
+  ctx.service('requestId', crypto.randomUUID());
+  next();
+}
+
+// This also works — 3 params, backward compatible
+middlewareLegacy(req: any, res: any, next: any) {
+  req.headers['x-powered-by'] = 'exedra';
+  next();
+}
+```
+
 ## Attributes Reference
 
 | Attribute | Target | Repeatable | Description |
@@ -519,6 +658,7 @@ getUsers(limit: number) { return { limit }; }            // req.query.limit
 | `@Config(key, val)` | class + method | Yes | Configuration values |
 | `@Validation(rules)` | class + method | No | Validation rules (as route state) |
 | `@Transformer(Class)` | class + method | No | Transformer class (as route state) |
+| `@Include(key)` | method (on transformer) | Yes | Registers optional include for transformer |
 | `@Param(key?)` | parameter | Yes | Reads from `req.params[key]` |
 | `@Body(key?)` | parameter | Yes | Reads from `req.body[key]` |
 | `@Query(key?)` | parameter | Yes | Reads from `req.query[key]` |
@@ -526,6 +666,8 @@ getUsers(limit: number) { return { limit }; }            // req.query.limit
 | `@Req()` | parameter | No | Raw Express Request |
 | `@Res()` | parameter | No | Raw Express Response |
 | `@Next()` | parameter | No | Express NextFunction |
+| `@Ctx()` | parameter | No | Per-request Context (child scope of app Container) |
+| `@Inject(token)` | parameter | Yes | Explicit injection by class or string token (transpile-safe) |
 | `@State(key?)` | parameter | Yes | Reads from route state |
 | `@Flag(name?)` | parameter | Yes | Checks if flag is set |
 | `@Series(key?)` | parameter | Yes | Reads from route series |
@@ -556,54 +698,103 @@ app.use(createValidationMiddleware(validate));
 
 ## Transformer
 
-Transform responses via `@Transformer`. The transformer is an object with a `transform` method:
+Transform responses via `@Transformer`. The transformer class implements a `transform` method that shapes the response:
 
 ```typescript
-import { Transformer, createTransformerMiddleware } from '@rosengate/exedra-ts';
+import { Transformer } from '@rosengate/exedra-ts';
+
+class UserTransformer {
+  transform(user: any) {
+    return { id: user.id, name: user.name, email: user.email };
+  }
+}
+
+class UserController extends Controller {
+  @Get('/:id')
+  @Transformer(UserTransformer)
+  getUser() {
+    return { id: 1, name: 'John', email: 'john@test.com', password: 'secret' };
+    // Response: { id: 1, name: 'John', email: 'john@test.com' }
+  }
+}
+```
+
+`@Transformer` is wired in automatically — no manual middleware setup needed.
+
+### Includes (Fractal-style)
+
+Add optional `@Include` methods to your transformer. Clients request them via `?include=`:
+
+```typescript
+import { Transformer, Include } from '@rosengate/exedra-ts';
 
 class UserTransformer {
   transform(user: any) {
     return { id: user.id, name: user.name };
   }
-}
 
-class UserController extends Controller {
-  @Path('/users/:id')
-  @Get('')
-  @Transformer(UserTransformer)
-  getUser() {
-    return { id: 1, name: 'John', password: 'secret' };
-    // Response: { id: 1, name: 'John' }
+  @Include('posts')
+  includePosts(user: any) {
+    return user.posts.map((p: any) => ({ id: p.id, title: p.title }));
+  }
+
+  @Include('settings')
+  includeSettings(_user: any) {
+    return { theme: 'dark', notifications: true };
   }
 }
 
-app.use(createTransformerMiddleware());
+class UserController extends Controller {
+  @Get('/:id')
+  @Transformer(UserTransformer)
+  getUser(@Param('id') id: string) {
+    return db.findUser(id); // full user with relations
+  }
+}
 ```
+
+```
+GET /users/1                       → { id: 1, name: 'John' }
+GET /users/1?include=posts         → { id: 1, name: 'John', posts: [...] }
+GET /users/1?include=posts,settings → { id: 1, name: 'John', posts: [...], settings: {...} }
+```
+
+- `@Include` methods receive the **original raw data** (not the transformed output)
+- Unknown includes are silently ignored
+- Multiple includes are comma-separated
 
 ## DI Container
 
-exedra-ts includes a lightweight IoC container with three registries:
+exedra-ts includes a lightweight IoC container with three registries. Supports both string and class reference keys:
 
 ```typescript
 import { Container } from '@rosengate/exedra-ts';
 
 const container = new Container();
 
-// Singletons
+// Singletons — by string key
 container.service('db', createDatabaseConnection());
+
+// Singletons — by class reference (for type-based injection)
+container.service(Database, createDatabaseConnection());
 
 // Factories (new instance per resolve)
 container.factory('mailer', () => new Mailer(config.smtp));
+container.factory(Cache, () => new RedisCache());
 
 // Callables
 container.func('hash', (password: string) => bcrypt.hash(password));
 
 // Resolution
 container.resolve('db');           // the singleton
+container.resolve(Database);       // the Database singleton
 container.resolve('mailer');       // new Mailer instance
 container.resolve('hash');         // the function
 container.canResolve('db');        // true
+container.canResolve(Database);    // true
 ```
+
+Pass the container to `createExedra` to enable type-based injection in handlers (see [Type-Based Injection](#type-based-injection-via-container)):
 
 ## Router Primitives
 
@@ -633,6 +824,7 @@ createExedra(app, {
   useFlatRouting: false,           // false = Express sub-routers (default), true = flat direct registration
   middlewares: [],                  // Global middleware functions
   decorators: [],                  // Global response decorators
+  container: undefined,            // IoC Container for type-based method injection
 });
 ```
 
@@ -643,6 +835,7 @@ createExedra(app, {
 | `useFlatRouting` | `false` | When `false`, uses Express `router.use()` with `mergeParams: true` (default, recommended). When `true`, registers all routes directly on parent router |
 | `middlewares` | `[]` | Global middleware applied to all routes |
 | `decorators` | `[]` | Global response decorators applied to all routes |
+| `container` | `undefined` | IoC Container for type-based method injection. When provided, handler params are resolved by their TypeScript type from the container |
 
 ## TypeScript Configuration
 

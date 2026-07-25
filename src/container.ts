@@ -1,16 +1,17 @@
 export type ServiceFactory = () => any;
+export type ContainerKey = string | Function;
 
 export class Container {
-  private services = new Map<string, any>();
-  private factories = new Map<string, ServiceFactory>();
-  private callables = new Map<string, Function>();
+  protected services = new Map<ContainerKey, any>();
+  protected factories = new Map<ContainerKey, ServiceFactory>();
+  protected callables = new Map<string, Function>();
 
-  service(name: string, value: any): this {
+  service(name: ContainerKey, value: any): this {
     this.services.set(name, value);
     return this;
   }
 
-  factory(name: string, fn: ServiceFactory): this {
+  factory(name: ContainerKey, fn: ServiceFactory): this {
     this.factories.set(name, fn);
     return this;
   }
@@ -20,11 +21,11 @@ export class Container {
     return this;
   }
 
-  resolve(name: string): any {
+  resolve(name: ContainerKey): any {
     if (this.services.has(name)) return this.services.get(name);
     const factory = this.factories.get(name);
     if (factory) return factory();
-    return this.callables.get(name);
+    return this.callables.get(name as string);
   }
 
   make<T>(Class: new (...args: any[]) => T): T {
@@ -35,8 +36,8 @@ export class Container {
     return new (Class as any)(...args);
   }
 
-  canResolve(name: string): boolean {
-    return this.services.has(name) || this.factories.has(name) || this.callables.has(name);
+  canResolve(name: ContainerKey): boolean {
+    return this.services.has(name) || this.factories.has(name) || (typeof name === 'string' && this.callables.has(name));
   }
 
   tokenResolve(name: string): any {

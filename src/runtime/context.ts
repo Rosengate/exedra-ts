@@ -1,7 +1,7 @@
 import express from 'express';
 import { Finding } from '../routing/finding';
 import { CallStack } from '../routing/callstack';
-import { Container } from '../container';
+import { Container, ContainerKey } from '../container';
 
 export class Context extends Container {
   req: express.Request;
@@ -12,6 +12,7 @@ export class Context extends Container {
   private serieses_: Record<string, any[]>;
   private callStack_: CallStack;
   private callPointer = 0;
+  private parent_: Container | null;
 
   constructor(
     req: express.Request,
@@ -21,6 +22,7 @@ export class Context extends Container {
     flags: string[] = [],
     serieses: Record<string, any[]> = {},
     callStack?: CallStack,
+    parent?: Container,
   ) {
     super();
     this.req = req;
@@ -30,9 +32,11 @@ export class Context extends Container {
     this.flags_ = flags;
     this.serieses_ = serieses;
     this.callStack_ = callStack || new CallStack();
+    this.parent_ = parent || null;
+    this.service(Context, this);
   }
 
-  static fromFinding(req: express.Request, res: express.Response, finding: Finding): Context {
+  static fromFinding(req: express.Request, res: express.Response, finding: Finding, parent?: Container): Context {
     const fullProps = finding.route.fullProperties();
     return new Context(
       req,
@@ -42,7 +46,25 @@ export class Context extends Container {
       fullProps.flags || [],
       fullProps.serieses || {},
       finding.getCallStack(),
+      parent,
     );
+  }
+
+  resolve(name: ContainerKey): any {
+    if (this.services.has(name)) return this.services.get(name);
+    const factory = this.factories.get(name);
+    if (factory) return factory();
+    if (typeof name === 'string' && this.callables.has(name)) return this.callables.get(name);
+    if (this.parent_) return this.parent_.resolve(name);
+    return undefined;
+  }
+
+  canResolve(name: ContainerKey): boolean {
+    if (this.services.has(name)) return true;
+    if (this.factories.has(name)) return true;
+    if (typeof name === 'string' && this.callables.has(name)) return true;
+    if (this.parent_) return this.parent_.canResolve(name);
+    return false;
   }
 
   param(name: string): string | undefined {
