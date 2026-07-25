@@ -11,3 +11,4 @@ export { Series } from './series';
 export { Flag } from './flag';
 export { Config } from './config';
 export { Param, Body, Query, Header, Req, Res, Next } from './bind';
+export { Include, getIncludeBindings } from './include';

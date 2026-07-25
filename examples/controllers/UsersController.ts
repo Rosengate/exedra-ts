@@ -1,9 +1,9 @@
 import express from 'express';
 import {
   Controller, Path, Get, Post, Put, Delete,
-  Name, Tag, Validation, Transformer,
+  Name, Tag, Validation, Transformer, Include,
 } from '../../src';
-import { users } from '../data';
+import { users, posts } from '../data';
 
 class UserTransformer {
   transform(user: any) {
@@ -12,6 +12,23 @@ class UserTransformer {
       name: user.name,
       email: user.email,
       role: user.role,
+    };
+  }
+
+  @Include('posts')
+  includePosts(user: any) {
+    return posts.filter((p) => p.author === user.name).map((p) => ({
+      id: p.id,
+      title: p.title,
+      excerpt: p.excerpt,
+    }));
+  }
+
+  @Include('settings')
+  includeSettings(user: any) {
+    return {
+      notifications: true,
+      theme: 'light',
     };
   }
 }

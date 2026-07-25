@@ -26,6 +26,7 @@ export {
   Req,
   Res,
   Next,
+  Include,
 } from './attributes';
 
 export { Validation, createValidationMiddleware, type ValidatorFn } from './attributes/validation';

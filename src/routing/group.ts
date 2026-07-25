@@ -2,6 +2,7 @@ import express from 'express';
 import { Route, MiddlewareEntry } from './route';
 import { Factory } from './factory';
 import { getParamBindings, ParamBinding } from '../attributes/param';
+import { createTransformerMiddleware } from '../attributes/transformer';
 
 export interface RouteInfo {
   method: string;
@@ -316,7 +317,7 @@ export class Group {
       const action = routeProps.action;
       const useAutoInject = this.namedParamAutoInject;
 
-      handlers.push((req, res, next) => {
+      handlers.push(async (req: any, _res: any, next: any) => {
         try {
           let args: any[] = [];
           const paramNames: string[] = routeProps.paramNames || [];
@@ -327,30 +328,35 @@ export class Group {
             const hasDecorators = Object.keys(bindings).length > 0;
 
             if (hasDecorators) {
-              args = resolveFromDecorators(bindings, req, res, next, routeProps);
+              args = resolveFromDecorators(bindings, req, _res, next, routeProps);
             } else if (useAutoInject) {
-              args = resolveFromParamNames(paramNames, req, res, next);
+              args = resolveFromParamNames(paramNames, req, _res, next);
             } else {
-              args = [req, res, next];
+              args = [req, _res, next];
             }
           } else {
-            args = [req, res, next];
+            args = [req, _res, next];
           }
 
-          const result = exec(...args);
-          if (result && typeof result.then === 'function') {
-            result.then((value: any) => {
-              if (value !== undefined && !res.headersSent) {
-                res.json(value);
-              }
-            }).catch(next);
-          } else if (result !== undefined && !res.headersSent) {
-            res.json(result);
-          }
+          const result = await exec(...args);
+          (req as any)._exedra_result = result;
+          next();
         } catch (err) {
           next(err);
         }
       });
+
+      const transformerClass = routeProps.states?.['exedra:transformer'];
+      if (transformerClass) {
+        handlers.push(createTransformerMiddleware(transformerClass));
+      } else {
+        handlers.push(async (req: any, res: any, _next: any) => {
+          const result = (req as any)._exedra_result;
+          if (result !== undefined && !res.headersSent) {
+            res.json(result);
+          }
+        });
+      }
     }
 
     return handlers;
