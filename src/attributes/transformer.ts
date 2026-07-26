@@ -12,7 +12,9 @@ export function Transformer(transformerClass: any): ClassDecorator & MethodDecor
     if (propertyKey === undefined) {
       mergeMetadata(target, undefined, { states: { 'exedra:transformer': transformerClass } });
     } else {
-      mergeMetadata(target, String(propertyKey), { states: { 'exedra:transformer': transformerClass } });
+      mergeMetadata(target, String(propertyKey), {
+        states: { 'exedra:transformer': transformerClass },
+      });
     }
   };
 }
@@ -32,7 +34,11 @@ export function createTransformerMiddleware(transformerClass: any) {
 
     const transformed = transformer.transform(result);
 
-    const includes = (req.query?.include as string)?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [];
+    const includes =
+      (req.query?.include as string)
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
     if (includes.length > 0) {
       const bindings = getIncludeBindings(transformer);
       for (const key of includes) {

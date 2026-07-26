@@ -1,5 +1,3 @@
-import { RouteMetadata } from '../metadata';
-import { kebabCase } from '../support/kebab-case';
 import { Group } from './group';
 
 export interface MiddlewareEntry {

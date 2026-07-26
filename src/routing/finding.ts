@@ -1,5 +1,4 @@
 import { Route, MiddlewareEntry } from './route';
-import { Group } from './group';
 import { Call } from './call';
 import { CallStack } from './callstack';
 
@@ -32,9 +31,11 @@ export class Finding {
 
     const execute = fullProps.execute;
     if (typeof execute === 'function') {
-      stack.addCall(new Call(execute, {
-        dependencies: fullProps.dependencies,
-      }));
+      stack.addCall(
+        new Call(execute, {
+          dependencies: fullProps.dependencies,
+        }),
+      );
     }
 
     return stack;

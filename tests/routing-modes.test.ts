@@ -6,18 +6,20 @@ import { createExedra } from '../src/handler';
 
 function request(app: express.Application, path: string): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const server = app.listen(0, () => {
+    let server: http.Server;
+    const timer = setTimeout(() => { server.close(); reject(new Error('timeout')); }, 5000);
+    server = app.listen(0, () => {
       const addr = server.address() as any;
       http.get(`http://localhost:${addr.port}${path}`, (res) => {
         let body = '';
         res.on('data', (d: Buffer) => (body += d));
         res.on('end', () => {
+          clearTimeout(timer);
           server.close();
           resolve({ status: res.statusCode || 0, body });
         });
       });
     });
-    setTimeout(() => { server.close(); reject(new Error('timeout')); }, 5000);
   });
 }
 

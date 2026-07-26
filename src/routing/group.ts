@@ -198,11 +198,11 @@ export class Group {
   }
 
   hasFailRoute(): boolean {
-    return this.routes.some(r => r.asFailRoute);
+    return this.routes.some((r) => r.asFailRoute);
   }
 
   getFailRoute(): Route | null {
-    return this.routes.find(r => r.asFailRoute) || null;
+    return this.routes.find((r) => r.asFailRoute) || null;
   }
 
   listRoutes(basePath: string = ''): RouteInfo[] {
@@ -306,7 +306,8 @@ export class Group {
     // Create per-request Context (before middleware runs)
     handlers.push((req: any, _res: any, next: any) => {
       req._exedra_context = new Context(
-        req, _res,
+        req,
+        _res,
         {},
         routeProps.states || {},
         routeProps.flags || [],
@@ -489,7 +490,7 @@ function resolveFromParamNames(
   const routeParams = (req.params || {}) as Record<string, string>;
   const queryParams = (req.query || {}) as Record<string, string>;
 
-  return paramNames.map(name => {
+  return paramNames.map((name) => {
     if (name in routeParams) return routeParams[name];
     if (name in queryParams) return queryParams[name];
     if (name === 'req' || name === 'request') return req;

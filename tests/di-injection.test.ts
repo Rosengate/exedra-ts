@@ -10,7 +10,9 @@ function request(
   options: { method?: string; body?: any; headers?: Record<string, string> } = {},
 ): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const server = app.listen(0, () => {
+    let server: http.Server;
+    const timer = setTimeout(() => { server.close(); reject(new Error('timeout')); }, 5000);
+    server = app.listen(0, () => {
       const addr = server.address() as any;
       const method = (options.method || 'GET').toUpperCase();
       const reqOpts: http.RequestOptions = {
@@ -24,17 +26,17 @@ function request(
         let body = '';
         res.on('data', (d: Buffer) => (body += d));
         res.on('end', () => {
+          clearTimeout(timer);
           server.close();
           resolve({ status: res.statusCode || 0, body });
         });
       });
-      req.on('error', (err) => { server.close(); reject(err); });
+      req.on('error', (err) => { clearTimeout(timer); server.close(); reject(err); });
       if (options.body) {
         req.write(JSON.stringify(options.body));
       }
       req.end();
     });
-    setTimeout(() => { server.close(); reject(new Error('timeout')); }, 5000);
   });
 }
 

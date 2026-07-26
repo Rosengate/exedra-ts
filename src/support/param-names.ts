@@ -3,6 +3,6 @@ export function getParamNames(fn: Function): string[] {
   if (!match) return [];
   return match[1]
     .split(',')
-    .map(s => s.trim().split(':')[0].trim())
+    .map((s) => s.trim().split(':')[0].trim())
     .filter(Boolean);
 }

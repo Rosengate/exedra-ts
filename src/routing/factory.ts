@@ -19,7 +19,7 @@ export class Factory {
     return new Route(group, name, properties);
   }
 
-  resolveGroup(group: Group, controllerClass: any): void {
+  resolveGroup(_group: Group, _controllerClass: any): void {
     // Will be populated by handler
   }
 }

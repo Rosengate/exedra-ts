@@ -36,7 +36,12 @@ export class Context extends Container {
     this.service(Context, this);
   }
 
-  static fromFinding(req: express.Request, res: express.Response, finding: Finding, parent?: Container): Context {
+  static fromFinding(
+    req: express.Request,
+    res: express.Response,
+    finding: Finding,
+    parent?: Container,
+  ): Context {
     const fullProps = finding.route.fullProperties();
     return new Context(
       req,

@@ -37,7 +37,11 @@ export class Container {
   }
 
   canResolve(name: ContainerKey): boolean {
-    return this.services.has(name) || this.factories.has(name) || (typeof name === 'string' && this.callables.has(name));
+    return (
+      this.services.has(name) ||
+      this.factories.has(name) ||
+      (typeof name === 'string' && this.callables.has(name))
+    );
   }
 
   tokenResolve(name: string): any {

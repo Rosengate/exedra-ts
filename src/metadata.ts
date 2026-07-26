@@ -37,7 +37,11 @@ export function getMetadata(target: any, propertyKey?: string): RouteMetadata {
   return Reflect.getMetadata(METADATA, resolved, propertyKey) || {};
 }
 
-export function setMetadata(target: any, propertyKey: string | undefined, metadata: Partial<RouteMetadata>): void {
+export function setMetadata(
+  target: any,
+  propertyKey: string | undefined,
+  metadata: Partial<RouteMetadata>,
+): void {
   const resolved = resolveTarget(target, propertyKey);
   const existing = getMetadata(target, propertyKey);
   const merged = { ...existing, ...metadata };
@@ -49,7 +53,11 @@ export function setMetadata(target: any, propertyKey: string | undefined, metada
   }
 }
 
-export function mergeMetadata(target: any, propertyKey: string | undefined, metadata: Partial<RouteMetadata>): void {
+export function mergeMetadata(
+  target: any,
+  propertyKey: string | undefined,
+  metadata: Partial<RouteMetadata>,
+): void {
   const resolved = resolveTarget(target, propertyKey);
   const existing = getMetadata(target, propertyKey);
   const merged: Record<string, any> = { ...existing };

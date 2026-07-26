@@ -305,25 +305,30 @@ class AdminController extends Controller {
 
 ### Attribute-Based Middleware
 
-Attach external middleware classes using the `@Middleware` attribute:
+Attach external middleware classes using the `@Middleware` attribute. This stores middleware metadata on the route for introspection:
 
 ```typescript
 @Middleware(AuthMiddleware)
 @Middleware(RateLimitMiddleware)
 @Path('/api')
 class ApiController extends Controller {
-  // CorsMiddleware → RateLimitMiddleware → controller routes
+  // Metadata stored: [AuthMiddleware, RateLimitMiddleware]
+  // Use middleware* prefix methods for actual runtime execution
 }
 ```
 
+> **Note**: `@Middleware` stores metadata but does not execute middleware at runtime. Use `middleware*` prefix methods for middleware that actually runs.
+
 ### Combining Both
 
+`@Middleware` stores metadata; `middleware*` methods execute at runtime:
+
 ```typescript
-@Middleware(CorsMiddleware)
+@Middleware(CorsMiddleware)  // stores metadata only
 @Path('/api')
 class ApiController extends Controller {
   middlewareAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-    next();
+    next();  // this actually executes
   }
 
   @Get('/users')
@@ -331,7 +336,7 @@ class ApiController extends Controller {
     return [];
   }
 }
-// Execution: CorsMiddleware → middlewareAuth → getUsers()
+// Execution: middlewareAuth → getUsers()
 ```
 
 ### Subrouting Inherits Parent Middleware
@@ -443,7 +448,7 @@ class UserController extends Controller {
 
 ## Decorator Methods
 
-Decorator methods wrap the response for all routes in the controller:
+Decorator methods wrap the response for all routes in the controller. They receive Express `(req, res, next)` and are registered as Express middleware:
 
 ```typescript
 @Path('/api')
@@ -453,18 +458,18 @@ class ApiController extends Controller {
     res: express.Response,
     next: express.NextFunction,
   ) {
-    const result = next();
-    // Wrap result before sending
-    return { data: result, timestamp: Date.now() };
+    // Modify response before sending
+    next();
   }
 
   @Get('/users')
   getUsers() {
     return [{ id: 1, name: 'John' }];
-    // Response: { data: [...], timestamp: 1234567890 }
   }
 }
 ```
+
+> **Note**: `@Decorator` attribute stores metadata but does not execute at runtime. Use `decorate*` prefix methods for response decoration that actually runs.
 
 ## Parameter Injection
 
@@ -647,8 +652,8 @@ middlewareLegacy(req: any, res: any, next: any) {
 | `@Path(path)` | class + method | No | Sets the route path |
 | `@Name(name)` | class + method | No | Sets the route name |
 | `@Method(verb)` | class + method | No | Sets HTTP method(s) |
-| `@Middleware(Class)` | class + method | Yes | Attaches external middleware |
-| `@Decorator(Class)` | class + method | Yes | Attaches response decorator |
+| `@Middleware(Class)` | class + method | Yes | Stores middleware metadata (use `middleware*` for execution) |
+| `@Decorator(Class)` | class + method | Yes | Stores decorator metadata (use `decorate*` for execution) |
 | `@Requestable(bool)` | class + method | No | Whether route appears in dispatch |
 | `@FailRoute` | method | No | Marks as fail route |
 | `@Tag(name)` | class + method | No | Tags the route |

@@ -1,6 +1,5 @@
 import express from 'express';
 import 'reflect-metadata';
-import { Controller } from './controller';
 import { Container } from './container';
 import { getMetadata, RouteMetadata } from './metadata';
 import { kebabCase } from './support/kebab-case';
@@ -116,7 +115,8 @@ class Handler {
           const childMeta = getMetadata(childClass);
 
           if (childMeta.path && properties.path) {
-            properties.path = '/' + properties.path.replace(/^\//, '') + '/' + childMeta.path.replace(/^\//, '');
+            properties.path =
+              '/' + properties.path.replace(/^\//, '') + '/' + childMeta.path.replace(/^\//, '');
           } else if (childMeta.path) {
             properties.path = childMeta.path;
           }

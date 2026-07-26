@@ -1,5 +1,3 @@
-import { MiddlewareEntry } from './route';
-
 export class Call {
   callable: Function;
   properties: Record<string, any>;

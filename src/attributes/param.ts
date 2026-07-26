@@ -3,7 +3,19 @@ import 'reflect-metadata';
 export const PARAM_BINDINGS = Symbol('exedra:param-bindings');
 
 export interface ParamBinding {
-  type: 'param' | 'body' | 'query' | 'header' | 'req' | 'res' | 'next' | 'state' | 'flag' | 'series' | 'ctx' | 'inject';
+  type:
+    | 'param'
+    | 'body'
+    | 'query'
+    | 'header'
+    | 'req'
+    | 'res'
+    | 'next'
+    | 'state'
+    | 'flag'
+    | 'series'
+    | 'ctx'
+    | 'inject';
   key?: any;
 }
 
@@ -19,6 +31,9 @@ export function setParamBinding(
   Reflect.defineMetadata(PARAM_BINDINGS, existing, target, propertyKey);
 }
 
-export function getParamBindings(target: any, propertyKey: string | symbol): Record<number, ParamBinding> {
+export function getParamBindings(
+  target: any,
+  propertyKey: string | symbol,
+): Record<number, ParamBinding> {
   return Reflect.getMetadata(PARAM_BINDINGS, target, propertyKey) || {};
 }
