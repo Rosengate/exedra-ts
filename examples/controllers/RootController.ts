@@ -4,7 +4,8 @@ import PostController from './PostController';
 import HealthController from './HealthController';
 import AdminController from './admin/AdminController';
 import DevicesController from "./DevicesController";
-import SessionController from './SessionController';
+import ProfileController from "./ProfileController";
+import ApisController from "./ApisController";
 
 class RootController extends Controller {
   get() {
@@ -13,28 +14,8 @@ class RootController extends Controller {
     }
   }
 
-  groupUsers() {
-    return UsersController;
-  }
-
-  groupPosts() {
-    return PostController;
-  }
-
-  groupAdmin() {
-    return AdminController;
-  }
-
-  groupHealth() {
-    return HealthController;
-  }
-
-  groupDevices() {
-    return DevicesController;
-  }
-
-  groupProfile() {
-    return SessionController;
+  groupApis() {
+    return ApisController;
   }
 }
 

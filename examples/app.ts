@@ -42,10 +42,9 @@ if (process.argv.includes('--routes')) {
   console.table(
     routes.map((r) => ({
       Method: r.method,
-      Path: r.path,
-      Name: r.name,
-      Controller: r.controllerPath,
-      Action: r.action,
+      Path: r.fullPath,
+      Name: r.fullName,
+      Action: `${r.controller}@${r.action}`,
     })),
   );
   process.exit(0);

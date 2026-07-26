@@ -84,7 +84,7 @@ examples/
     PostController.ts            GET/POST/PATCH /posts
     HealthController.ts          GET /health (verb-only)
     DevicesController.ts         Decorator-based param injection examples
-    SessionController.ts         Request-level Context: middleware registers services, handler injects via @Ctx
+    ProfileController.ts         Request-level Context: middleware registers services, handler injects via @Ctx
     admin/
       AdminController.ts         GET /admin + subrouting
       SettingsController.ts      GET/PUT /admin/settings

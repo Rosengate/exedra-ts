@@ -14,8 +14,8 @@ const fakeUsers: Record<string, User> = {
 // GET /profile/:id — get user by ID, verify ownership
 // Demonstrates: middleware registers services on per-request Context, handler injects via @Inject
 @Path('/profile')
-class ProfileController extends Controller {
-  middlewareAuth(
+export default class ProfileController extends Controller {
+  middleware(
     req: express.Request,
     res: express.Response,
     next: express.NextFunction,
@@ -49,8 +49,11 @@ class ProfileController extends Controller {
       return { error: 'Forbidden', message: 'You can only view your own profile' };
     }
 
-    return { id: user.id, name: user.name };
+    return { id: user.id, name: user.name , status: 'ok'};
+  }
+
+  @Path('/:id')
+  postProfile() {
+
   }
 }
-
-export default ProfileController;
