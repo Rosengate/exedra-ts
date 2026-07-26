@@ -1,4 +1,4 @@
-import {Controller, Path} from "../../src";
+import {Controller, Path} from "../../../src";
 import express from "express";
 import DeviceScreenTests from "./DeviceScreenTests";
 

@@ -2,8 +2,8 @@ import express from 'express';
 import {
   Controller, Path, Get, Post, Patch,
   Name, Tag, Validation, Transformer,
-} from '../../src';
-import { posts } from '../data';
+} from '../../../src';
+import { posts } from '../../data';
 
 class PostTransformer {
   transform(post: any) {

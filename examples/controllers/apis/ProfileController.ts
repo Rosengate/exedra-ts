@@ -1,5 +1,5 @@
 import express from 'express';
-import { Controller, Path, Get, Param, Inject, Ctx, Context } from '../../src';
+import {Controller, Path, Get, Param, Inject, Ctx, Context, Validation} from '../../../src';
 
 export class User {
   constructor(public id: number, public name: string, public email: string) {}
@@ -53,7 +53,12 @@ export default class ProfileController extends Controller {
   }
 
   @Path('/:id')
+  @Validation({
+    name: 'required',
+    email: 'required|email',
+  })
   postProfile() {
-
+    return {
+    }
   }
 }

@@ -1,4 +1,4 @@
-import {Controller, Path} from "../../src";
+import {Controller, Path} from "../../../src";
 
 @Path('/:screenId/tests')
 export default class DeviceScreenTests extends Controller {

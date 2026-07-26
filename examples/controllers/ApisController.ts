@@ -1,10 +1,10 @@
 import {Controller, Path} from "../../src";
-import UsersController from "./UsersController";
-import PostController from "./PostController";
-import AdminController from "./admin/AdminController";
-import HealthController from "./HealthController";
-import DevicesController from "./DevicesController";
-import ProfileController from "./ProfileController";
+import UsersController from "./apis/UsersController";
+import PostController from "./apis/PostController";
+import AdminController from "./apis/admin/AdminController";
+import HealthController from "./apis/HealthController";
+import DevicesController from "./apis/DevicesController";
+import ProfileController from "./apis/ProfileController";
 
 @Path('/apis')
 export default class ApisController extends Controller {

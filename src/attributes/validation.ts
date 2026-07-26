@@ -13,8 +13,8 @@ export function Validation(rules: Record<string, any>): ClassDecorator & MethodD
 export type ValidatorFn = (data: any, rules: Record<string, any>) => Promise<void> | void;
 
 export function createValidationMiddleware(validator: ValidatorFn) {
-  return async (req: any, res: any, next: () => Promise<any>) => {
-    const rules = req._exedra_states?.['exedra:validation'];
+  return async (req: any, res: any, next: any, ctx?: any) => {
+    const rules = ctx?.state('exedra:validation');
     if (rules) {
       await validator(req.body, rules);
     }

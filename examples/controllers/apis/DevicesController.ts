@@ -1,4 +1,4 @@
-import { Controller, Path, Get, Post, Param, Body, Query, Header, State, Flag, Series } from '../../src';
+import { Controller, Path, Get, Post, Param, Body, Query, Header, State, Flag, Series } from '../../../src';
 import DeviceScreensController from "./DeviceScreensController";
 
 @Path('/devices')

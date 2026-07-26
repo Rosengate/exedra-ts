@@ -2,36 +2,9 @@ import express from 'express';
 import {
   Controller, Path, Get, Post, Put, Delete,
   Name, Tag, Validation, Transformer, Include,
-} from '../../src';
-import { users, posts } from '../data';
-
-class UserTransformer {
-  transform(user: any) {
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    };
-  }
-
-  @Include('posts')
-  includePosts(user: any) {
-    return posts.filter((p) => p.author === user.name).map((p) => ({
-      id: p.id,
-      title: p.title,
-      excerpt: p.excerpt,
-    }));
-  }
-
-  @Include('settings')
-  includeSettings(user: any) {
-    return {
-      notifications: true,
-      theme: 'light',
-    };
-  }
-}
+} from '../../../src';
+import { users, posts } from '../../data';
+import UserApiController from "./user/UserApiController";
 
 @Path('/users')
 @Tag('api')
@@ -58,7 +31,7 @@ export default class UsersController extends Controller {
   }
 
   @Get('')
-  @Name('users.index')
+  @Name('user-list')
   getUsers() {
     return {
       data: users.map((u) => ({
@@ -68,13 +41,6 @@ export default class UsersController extends Controller {
         role: u.role,
       })),
     };
-  }
-
-  @Get('/:id')
-  @Name('users.show')
-  @Transformer(UserTransformer)
-  getUser(id: string) {
-    return users.find((u) => u.id === Number(id)) || users[0];
   }
 
   @Post('')
@@ -88,19 +54,7 @@ export default class UsersController extends Controller {
     };
   }
 
-  @Put('/:id')
-  @Name('users.update')
-  updateUser() {
-    return {
-      id: 1,
-      name: 'Alice Updated',
-      email: 'alice@example.com',
-    };
-  }
-
-  @Delete('/:id')
-  @Name('users.destroy')
-  deleteUser() {
-    return { deleted: true };
+  groupUser() {
+    return UserApiController;
   }
 }

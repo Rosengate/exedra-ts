@@ -35,7 +35,7 @@ Your `tsconfig.json` needs decorator support:
 
 ### Step 3: Create Your First Controller
 
-Create a file `src/controllers/UserController.ts`:
+Create a file `src/controllers/UserApiController.ts`:
 
 ```typescript
 import express from 'express';
