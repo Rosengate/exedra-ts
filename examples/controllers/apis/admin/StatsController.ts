@@ -1,7 +1,8 @@
-import { Controller, Path, Get } from '../../../../src';
+import {Controller, Path, Get, Name} from '../../../../src';
 import { users, posts } from '../../../data';
 
 @Path('/stats')
+@Name('stats')
 class AdminStatsController extends Controller {
   @Get('')
   getStats() {

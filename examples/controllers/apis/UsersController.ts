@@ -31,7 +31,6 @@ export default class UsersController extends Controller {
   }
 
   @Get('')
-  @Name('user-list')
   getUsers() {
     return {
       data: users.map((u) => ({
@@ -44,7 +43,6 @@ export default class UsersController extends Controller {
   }
 
   @Post('')
-  @Name('users.store')
   @Validation({ name: 'required', email: 'required|email' })
   storeUser() {
     return {

@@ -43,20 +43,17 @@ class PostController extends Controller {
   }
 
   @Get('')
-  @Name('posts.index')
   getPosts() {
     return { data: posts };
   }
 
   @Get('/:id')
-  @Name('posts.show')
   @Transformer(PostTransformer)
   getPost(id: string) {
     return posts.find((p) => p.id === Number(id)) || posts[0];
   }
 
   @Post('')
-  @Name('posts.store')
   @Validation({ title: 'required', body: 'required' })
   storePost() {
     return {
@@ -67,7 +64,6 @@ class PostController extends Controller {
   }
 
   @Patch('/:id')
-  @Name('posts.update-partial')
   patchPost() {
     return {
       id: 1,

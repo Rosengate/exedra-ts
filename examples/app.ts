@@ -36,9 +36,7 @@ const PORT = process.env.PORT || 3545;
 // --routes flag: list all routes and exit
 if (process.argv.includes('--routes')) {
   const routes = rootGroup.listRoutes();
-  console.log('');
   console.log(`  Registered routes (${routes.length}):`);
-  console.log('');
   console.table(
     routes.map((r) => ({
       Method: r.method,

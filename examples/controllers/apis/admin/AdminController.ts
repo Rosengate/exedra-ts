@@ -32,7 +32,7 @@ class AdminController extends Controller {
     return AdminStatsController;
   }
 
-  @Get('')
+  @Path('/admin-index')
   getAdminIndex() {
     return {
       area: 'admin',

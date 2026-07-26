@@ -3,7 +3,6 @@ import {Controller, Path, Get, Put, FailRoute, Name} from '../../../../src';
 import TerminalSettingsApiController from "./settings/TerminalSettingsApiController";
 
 @Path('/settings')
-@Name('my-settings')
 export default class AdminSettingsController extends Controller {
   middlewareAdminOnly(
     req: express.Request,

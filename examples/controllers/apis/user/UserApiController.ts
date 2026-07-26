@@ -32,7 +32,6 @@ class UserTransformer {
 @Path('/:user-id')
 export default class UserApiController extends Controller {
   @Get('/:id')
-  @Name('users.show')
   @Transformer(UserTransformer)
   getUser(id: string) {
     return users.find((u) => u.id === Number(id)) || users[0];
@@ -51,7 +50,6 @@ export default class UserApiController extends Controller {
   }
 
   @Delete('/:id')
-  @Name('users.destroy')
   deleteUser() {
     return { deleted: true };
   }
