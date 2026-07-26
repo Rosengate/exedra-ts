@@ -358,6 +358,44 @@ class ApiController extends Controller {
 // Execution: cors → middlewareAuth → getUsers()
 ```
 
+### Error Handling with `await next()`
+
+Middleware runs in an onion model. Use `await next()` to wait for downstream middleware and handlers, then catch any errors:
+
+```typescript
+@Path('/api')
+class ApiController extends Controller {
+  async middlewareErrorBoundary(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) {
+    try {
+      await next(); // waits for all downstream middleware + handler
+    } catch (err: any) {
+      console.error('Caught:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  }
+
+  @Get('/users')
+  getUsers() {
+    throw new Error('Something went wrong');
+    // The error bubbles up to middlewareErrorBoundary's catch block
+  }
+}
+```
+
+The onion model means middleware runs before AND after downstream:
+
+```typescript
+async middlewareTiming(req, res, next) {
+  console.log('before');  // runs first
+  await next();           // waits for downstream
+  console.log('after');   // runs after downstream completes
+}
+```
+
 ### Subrouting Inherits Parent Middleware
 
 ```typescript

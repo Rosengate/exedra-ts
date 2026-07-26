@@ -319,6 +319,7 @@ export class Group {
   private buildHandlers(route: Route): express.RequestHandler[] {
     const handlers: express.RequestHandler[] = [];
     const routeProps = route.fullProperties();
+    let responseSender: express.RequestHandler | null = null;
 
     // Create per-request Context (before middleware runs)
     handlers.push((req: any, _res: any, next: any) => {
@@ -339,12 +340,9 @@ export class Group {
     for (const entry of mwEntries) {
       const fn = typeof entry === 'function' ? entry : entry.fn;
       if (typeof fn !== 'function') continue;
-      handlers.push((req, res, next) => {
+      handlers.push((req: any, res: any, next: any) => {
         const ctx = (req as any)._exedra_context;
-        const result = fn(req, res, next, ctx);
-        if (result && typeof result.then === 'function') {
-          result.catch(next);
-        }
+        return fn(req, res, next, ctx);
       });
     }
 
@@ -355,79 +353,149 @@ export class Group {
       const useAutoInject = this.namedParamAutoInject;
 
       handlers.push(async (req: any, _res: any, next: any) => {
-        try {
-          let args: any[] = [];
-          const paramNames: string[] = routeProps.paramNames || [];
-          const ctx: Context | undefined = req._exedra_context;
+        let args: any[] = [];
+        const paramNames: string[] = routeProps.paramNames || [];
+        const ctx: Context | undefined = req._exedra_context;
 
-          if (controllerClass && action) {
-            const proto = controllerClass.prototype;
-            const bindings = getParamBindings(proto, action);
-            const hasDecorators = Object.keys(bindings).length > 0;
+        if (controllerClass && action) {
+          const proto = controllerClass.prototype;
+          const bindings = getParamBindings(proto, action);
+          const hasDecorators = Object.keys(bindings).length > 0;
 
-            if (hasDecorators) {
-              args = resolveFromDecorators(bindings, req, _res, next, routeProps, ctx);
-            }
-
-            if (useAutoInject) {
-              const namedArgs = resolveFromParamNames(paramNames, req, _res, next, ctx);
-              for (let i = 0; i < Math.max(args.length, namedArgs.length); i++) {
-                if ((i >= args.length || args[i] === undefined) && namedArgs[i] !== undefined) {
-                  args[i] = namedArgs[i];
-                }
-              }
-            }
-
-            // Type-based DI fills remaining undefined/empty slots
-            const wiremanContainer = ctx || this.container;
-            if (wiremanContainer) {
-              const typeArgs = new Wireman(wiremanContainer).resolveTypes(exec);
-              for (let i = 0; i < Math.max(args.length, typeArgs.length); i++) {
-                if ((i >= args.length || args[i] === undefined) && typeArgs[i] !== undefined) {
-                  args[i] = typeArgs[i];
-                }
-              }
-            }
-
-            // Express fallback: fill remaining undefined slots
-            if (args.length === 0) {
-              args = [req, _res, next];
-            } else {
-              const expressArgs = [req, _res, next];
-              let expressIdx = 0;
-              for (let i = 0; i < args.length; i++) {
-                if (args[i] === undefined) {
-                  args[i] = expressArgs[expressIdx++];
-                }
-              }
-            }
-          } else {
-            args = [req, _res, next];
+          if (hasDecorators) {
+            args = resolveFromDecorators(bindings, req, _res, next, routeProps, ctx);
           }
 
-          const result = await exec(...args);
-          (req as any)._exedra_result = result;
-          next();
-        } catch (err) {
-          next(err);
+          if (useAutoInject) {
+            const namedArgs = resolveFromParamNames(paramNames, req, _res, next, ctx);
+            for (let i = 0; i < Math.max(args.length, namedArgs.length); i++) {
+              if ((i >= args.length || args[i] === undefined) && namedArgs[i] !== undefined) {
+                args[i] = namedArgs[i];
+              }
+            }
+          }
+
+          // Type-based DI fills remaining undefined/empty slots
+          const wiremanContainer = ctx || this.container;
+          if (wiremanContainer) {
+            const typeArgs = new Wireman(wiremanContainer).resolveTypes(exec);
+            for (let i = 0; i < Math.max(args.length, typeArgs.length); i++) {
+              if ((i >= args.length || args[i] === undefined) && typeArgs[i] !== undefined) {
+                args[i] = typeArgs[i];
+              }
+            }
+          }
+
+          // Express fallback: fill remaining undefined slots
+          if (args.length === 0) {
+            args = [req, _res, next];
+          } else {
+            const expressArgs = [req, _res, next];
+            let expressIdx = 0;
+            for (let i = 0; i < args.length; i++) {
+              if (args[i] === undefined) {
+                args[i] = expressArgs[expressIdx++];
+              }
+            }
+          }
+        } else {
+          args = [req, _res, next];
         }
+
+        const result = await exec(...args);
+        (req as any)._exedra_result = result;
+        next();
       });
 
       const transformerClass = routeProps.states?.['exedra:transformer'];
       if (transformerClass) {
-        handlers.push(createTransformerMiddleware(transformerClass));
+        responseSender = createTransformerMiddleware(transformerClass);
       } else {
-        handlers.push(async (req: any, res: any, _next: any) => {
+        responseSender = async (req: any, res: any, _next: any) => {
           const result = (req as any)._exedra_result;
           if (result !== undefined && !res.headersSent) {
             res.json(result);
           }
-        });
+        };
       }
     }
 
-    return handlers;
+    // Wrap middleware + handler in an onion-style chain
+    const allHandlers = handlers;
+    return [(req: express.Request, res: express.Response, next: express.NextFunction) => {
+      runMiddlewareChain(allHandlers, req, res)
+        .then(() => {
+          if (responseSender && !(res as any).headersSent) {
+            responseSender(req, res, next);
+          }
+        })
+        .catch((err) => {
+          if (!(res as any).headersSent && !(res as any).writableEnded) {
+            next(err);
+          }
+        });
+    }];
   }
+}
+
+function runMiddlewareChain(
+  handlers: express.RequestHandler[],
+  req: express.Request,
+  res: express.Response,
+): Promise<any> {
+  let index = 0;
+
+  function callNext(): Promise<any> {
+    if (index >= handlers.length) return Promise.resolve((req as any)._exedra_result);
+    const handler = handlers[index++];
+    let nextCalled = false;
+    let nextPromise: Promise<any> | null = null;
+
+    return new Promise<any>((resolve, reject) => {
+      const nextFn = (err?: any): Promise<any> => {
+        if (nextCalled) return Promise.resolve((req as any)._exedra_result);
+        nextCalled = true;
+        if (err) {
+          nextPromise = Promise.reject(err);
+          return nextPromise;
+        }
+        nextPromise = callNext();
+        return nextPromise;
+      };
+
+      try {
+        const result = (handler as any)(req, res, nextFn);
+        if (result && typeof result.then === 'function') {
+          result.then(
+            (handlerResult: any) => {
+              if (handlerResult !== undefined) {
+                (req as any)._exedra_result = handlerResult;
+              }
+              const currentValue = (req as any)._exedra_result;
+              if (nextPromise) {
+                nextPromise.then(() => resolve(currentValue), () => resolve(currentValue));
+              } else if (!nextCalled) {
+                nextFn().then(() => resolve(currentValue), reject);
+              } else {
+                resolve(currentValue);
+              }
+            },
+            (err: any) => reject(err),
+          );
+        } else if (!nextCalled) {
+          nextFn().then(resolve, reject);
+        } else if (nextPromise) {
+          nextPromise.then(resolve, reject);
+        } else {
+          resolve((req as any)._exedra_result);
+        }
+      } catch (err) {
+        reject(err as any);
+      }
+    });
+  }
+
+  return callNext();
 }
 
 function resolveFromDecorators(

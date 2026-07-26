@@ -1,5 +1,5 @@
 import express from 'express';
-import { createExedra } from '../src';
+import {createExedra, createValidationMiddleware} from '../src';
 import RootController from './controllers/RootController';
 
 const app = express();

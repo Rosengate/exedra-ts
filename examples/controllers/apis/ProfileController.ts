@@ -15,7 +15,7 @@ const fakeUsers: Record<string, User> = {
 // Demonstrates: middleware registers services on per-request Context, handler injects via @Inject
 @Path('/profile')
 export default class ProfileController extends Controller {
-  middleware(
+  async middleware(
     req: express.Request,
     res: express.Response,
     next: express.NextFunction,
@@ -24,12 +24,42 @@ export default class ProfileController extends Controller {
     const token = req.headers.authorization?.replace('Bearer ', '');
     const user = token ? fakeUsers[token] : undefined;
     if (!user) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({error: 'Unauthorized'});
       return;
     }
     ctx.service(User, user);
     ctx.service('token', token);
-    next();
+
+    return await next();
+  }
+
+  async middlewareCatch(req: express.Request, res: express.Response, next: express.NextFunction) {
+    try {
+      await next();
+    } catch (err: any) {
+      throw err;
+    }
+  }
+
+  // middlewareNoCalling() {
+  //   throw new Error('Should not be called');
+  // }
+
+  async middlewareProfile(req: express.Request, _res: express.Response, next: express.NextFunction) {
+    return {
+      data: await next()
+    }
+  }
+
+  @Path('/:id')
+  @Validation({
+    name: 'required',
+    email: 'required|email',
+  })
+  postProfile() {
+    return {
+      test: 'no workinggg'
+    }
   }
 
   @Get('')
@@ -50,15 +80,5 @@ export default class ProfileController extends Controller {
     }
 
     return { id: user.id, name: user.name , status: 'ok'};
-  }
-
-  @Path('/:id')
-  @Validation({
-    name: 'required',
-    email: 'required|email',
-  })
-  postProfile() {
-    return {
-    }
   }
 }
