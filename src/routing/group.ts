@@ -11,6 +11,9 @@ export interface RouteInfo {
   method: string;
   path: string;
   name: string;
+  fullPath: string;
+  fullName: string;
+  controllerPath: string;
   controller: string;
   action: string;
   tag?: string;
@@ -206,10 +209,11 @@ export class Group {
     return this.routes.find((r) => r.asFailRoute) || null;
   }
 
-  listRoutes(basePath: string = ''): RouteInfo[] {
+  listRoutes(basePath: string = '', baseName: string = '', controllerPath: string = ''): RouteInfo[] {
     const results: RouteInfo[] = [];
     const groupPrefix = this.basePath && !this.parent ? this.basePath : '';
     const effectiveBase = groupPrefix + basePath;
+    const groupControllerPath = this.basePath || controllerPath;
 
     for (const route of this.routes) {
       if (route.asFailRoute || !route.requestable) continue;
@@ -217,16 +221,20 @@ export class Group {
       const childGroup: Group | undefined = route.properties._childGroup;
       const routePath = route.path || '';
       const fullPath = effectiveBase + (routePath ? '/' + routePath.replace(/^\//, '') : '');
+      const routeBaseName = this.baseName || baseName;
 
       if (childGroup) {
-        results.push(...childGroup.listRoutes(fullPath));
+        results.push(...childGroup.listRoutes(fullPath, routeBaseName, groupControllerPath));
       }
 
       if (route.method) {
         results.push({
           method: route.method,
-          path: (fullPath || '/').replace(/\/+$/, '') || '/',
-          name: route.fullName,
+          path: '/' + routePath.replace(/^\//, ''),
+          name: route.name,
+          fullPath: (fullPath || '/').replace(/\/+$/, '') || '/',
+          fullName: route.fullName,
+          controllerPath: groupControllerPath || '/',
           controller: route.controller,
           action: route.action,
           tag: route.tag,

@@ -73,7 +73,7 @@ describe('Class-level decorator wiring', () => {
       expect(getUserRoute!.fullName).toBe('apis.users.get-user');
     });
 
-    it('listRoutes() returns fullName in the name field', () => {
+    it('listRoutes() returns name, fullName, and fullPath', () => {
       @Path('/users')
       @Name('apis.users')
       class UsersController extends Controller {
@@ -93,7 +93,9 @@ describe('Class-level decorator wiring', () => {
       const group = createExedra(app, { controller: Root });
       const routes = group.listRoutes();
 
-      expect(routes[0].name).toBe('apis.users.list-users');
+      expect(routes[0].name).toBe('list-users');
+      expect(routes[0].fullName).toBe('apis.users.list-users');
+      expect(routes[0].fullPath).toBe('/users');
     });
 
     it('group* method name provides default baseName, chains through nesting', () => {
@@ -127,9 +129,9 @@ describe('Class-level decorator wiring', () => {
       const group = createExedra(app, { controller: Root });
       const routes = group.listRoutes();
 
-      const names = routes.map(r => r.name).sort();
-      expect(names).toContain('admin.get-admin');
-      expect(names).toContain('admin.settings.get-settings');
+      const fullNames = routes.map(r => r.fullName).sort();
+      expect(fullNames).toContain('admin.get-admin');
+      expect(fullNames).toContain('admin.settings.get-settings');
     });
 
     it('@Name replaces the group* method default', () => {
@@ -164,9 +166,9 @@ describe('Class-level decorator wiring', () => {
       const group = createExedra(app, { controller: Root });
       const routes = group.listRoutes();
 
-      const names = routes.map(r => r.name).sort();
-      expect(names).toContain('v2.get-admin');
-      expect(names).toContain('v2.settings.get-settings');
+      const fullNames = routes.map(r => r.fullName).sort();
+      expect(fullNames).toContain('v2.get-admin');
+      expect(fullNames).toContain('v2.settings.get-settings');
     });
 
     it('routes without @Name or group* have no prefix', () => {
@@ -193,6 +195,58 @@ describe('Class-level decorator wiring', () => {
 
       expect(route!.name).toBe('list-items');
       expect(route!.fullName).toBe('items.list-items');
+    });
+
+    it('listRoutes returns all fields correctly for nested controllers', () => {
+      @Path('/settings')
+      class SettingsController extends Controller {
+        @Get('/:id')
+        getSetting() {
+          return {};
+        }
+      }
+
+      @Path('/admin')
+      class AdminController extends Controller {
+        @Get('')
+        getAdmin() {
+          return {};
+        }
+
+        groupSettings() {
+          return SettingsController;
+        }
+      }
+
+      class Root extends Controller {
+        groupAdmin() {
+          return AdminController;
+        }
+      }
+
+      const app = express();
+      const group = createExedra(app, { controller: Root });
+      const routes = group.listRoutes();
+
+      const adminRoute = routes.find(r => r.action === 'getAdmin');
+      expect(adminRoute).toMatchObject({
+        method: 'GET',
+        path: '/',
+        name: 'get-admin',
+        fullPath: '/admin',
+        fullName: 'admin.get-admin',
+        controllerPath: '/admin',
+      });
+
+      const settingsRoute = routes.find(r => r.action === 'getSetting');
+      expect(settingsRoute).toMatchObject({
+        method: 'GET',
+        path: '/:id',
+        name: 'get-setting',
+        fullPath: '/admin/settings/:id',
+        fullName: 'admin.settings.get-setting',
+        controllerPath: '/settings',
+      });
     });
   });
 

@@ -874,12 +874,27 @@ import { Route, Group, Finding, CallStack, Call, Factory } from '@rosengate/exed
 
 | Class | Description |
 |---|---|
-| `Route` | A single route definition with properties. `route.name` = local name, `route.fullName` = full dotted path |
-| `Group` | Wraps Express Router, supports nesting |
+| `Route` | Single route definition. `name` (relative), `fullName` (dotted path), `path` (relative), `fullPath` (absolute URL), `controllerPath` (controller's `@Path`) |
+| `Group` | Wraps Express Router. `listRoutes()` returns `RouteInfo[]` with all the above fields |
 | `Finding` | A resolved route match, builds callstack |
 | `CallStack` | Ordered pipeline of middleware + handler calls |
 | `Call` | A single callable in the pipeline |
 | `Factory` | Creates groups, routes, and findings |
+
+### listRoutes() Fields
+
+`group.listRoutes()` returns an array of `RouteInfo`:
+
+| Field | Example | Description |
+|---|---|---|
+| `method` | `'GET'` | HTTP method |
+| `path` | `'/:id'` | Route's own path segment (relative) |
+| `name` | `'get-user'` | Route's own name (relative) |
+| `fullPath` | `'/admin/users/:id'` | Absolute URL path |
+| `fullName` | `'admin.users.get-user'` | Full dotted name with `@Name` prefixes |
+| `controllerPath` | `'/users'` | The controller's `@Path` value |
+| `controller` | `'UsersController'` | Controller class name |
+| `action` | `'getUser'` | Method name |
 
 ## Configuration
 
