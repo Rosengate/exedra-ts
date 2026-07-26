@@ -1,4 +1,3 @@
-import express from 'express';
 import { Controller, Group } from '../../src';
 import UsersController from './UsersController';
 import PostController from './PostController';

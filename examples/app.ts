@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import express from 'express';
 import { createExedra } from '../src';
 import RootController from './controllers/RootController';

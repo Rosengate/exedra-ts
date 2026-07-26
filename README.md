@@ -14,26 +14,24 @@ Define your routes through **method name conventions** and **decorators** on con
 ### Step 1: Install
 
 ```bash
-npm i @rosengate/exedra-ts express reflect-metadata
+npm i @rosengate/exedra-ts express
 npm i -D @types/express typescript
 ```
 
 ### Step 2: Configure TypeScript
 
-Your `tsconfig.json` **must** include these two options or decorators won't work:
+Your `tsconfig.json` needs decorator support:
 
 ```json
 {
   "compilerOptions": {
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "target": "ES2022",
-    "module": "commonjs",
-    "strict": true,
-    "esModuleInterop": true
+    "emitDecoratorMetadata": true
   }
 }
 ```
+
+> **Note**: These options are required for TypeScript's legacy decorators. They're already configured in the library itself — you only need them in your own `tsconfig.json` if you're writing custom decorators or controllers.
 
 ### Step 3: Create Your First Controller
 
@@ -103,7 +101,6 @@ export default class RootController extends Controller {
 Create `src/app.ts`:
 
 ```typescript
-import 'reflect-metadata';
 import express from 'express';
 import { createExedra } from '@rosengate/exedra-ts';
 import RootController from './controllers/RootController';
@@ -137,7 +134,6 @@ curl -X POST -H "Content-Type: application/json" -d '{"name":"Charlie"}' http://
 ## Quick Start
 
 ```typescript
-import 'reflect-metadata';
 import express from 'express';
 import { Controller, Path, Get, Post, createExedra } from '@rosengate/exedra-ts';
 
