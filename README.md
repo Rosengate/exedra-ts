@@ -263,6 +263,8 @@ class SearchController extends Controller {
 
 ## Middleware
 
+> For an in-depth comparison of how middleware works in exedra-ts vs exedra-php vs NestJS, see [docs/middleware-architecture.md](docs/middleware-architecture.md).
+
 ### Method-Based Middleware
 
 Define middleware as methods on the controller using the `middleware*` prefix. Middleware methods receive Express `(req, res, next)`:
