@@ -45,7 +45,7 @@ if (process.argv.includes('--routes')) {
       Method: r.method,
       Path: r.path,
       Name: r.name,
-      Controller: r.controller,
+      Controller: r.controllerPath,
       Action: r.action,
     })),
   );

@@ -235,7 +235,7 @@ describe('Class-level decorator wiring', () => {
         name: 'get-admin',
         fullPath: '/admin',
         fullName: 'admin.get-admin',
-        controllerPath: '/admin',
+        controllerPath: 'AdminController',
       });
 
       const settingsRoute = routes.find(r => r.action === 'getSetting');
@@ -245,7 +245,7 @@ describe('Class-level decorator wiring', () => {
         name: 'get-setting',
         fullPath: '/admin/settings/:id',
         fullName: 'admin.settings.get-setting',
-        controllerPath: '/settings',
+        controllerPath: 'SettingsController',
       });
     });
   });

@@ -10,6 +10,48 @@ import { Route } from './routing/route';
 
 const HTTP_VERBS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'];
 
+const filePathCache = new Map<Function, string>();
+const projectRoot = process.cwd();
+
+function resolveFilePath(controllerClass: Function): string {
+  const cached = filePathCache.get(controllerClass);
+  if (cached !== undefined) return cached;
+
+  for (const [filePath, mod] of Object.entries(require.cache)) {
+    try {
+      if (!mod || !mod.exports) continue;
+      const exports = mod.exports;
+      if (typeof exports !== 'object' && typeof exports !== 'function') continue;
+
+      let found = false;
+      if (exports === controllerClass) {
+        found = true;
+      } else if (typeof exports === 'object' && exports !== null) {
+        for (const exportValue of Object.values(exports)) {
+          if (exportValue === controllerClass) {
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (found) {
+        const relative = filePath.startsWith(projectRoot)
+          ? filePath.slice(projectRoot.length + 1).replace(/\\/g, '/')
+          : filePath.replace(/\\/g, '/');
+        filePathCache.set(controllerClass, relative);
+        return relative;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  const fallback = controllerClass.name || '';
+  filePathCache.set(controllerClass, fallback);
+  return fallback;
+}
+
 export interface ExedraOptions {
   controller: Function;
   middlewares?: Function[];
@@ -130,6 +172,7 @@ class Handler {
 
       properties.controller = controllerClass.name;
       properties.controllerClass = controllerClass;
+      properties.controllerPath = resolveFilePath(controllerClass);
       properties.action = methodName;
 
       let childClass: Function | undefined;

@@ -209,11 +209,10 @@ export class Group {
     return this.routes.find((r) => r.asFailRoute) || null;
   }
 
-  listRoutes(basePath: string = '', baseName: string = '', controllerPath: string = ''): RouteInfo[] {
+  listRoutes(basePath: string = '', baseName: string = ''): RouteInfo[] {
     const results: RouteInfo[] = [];
     const groupPrefix = this.basePath && !this.parent ? this.basePath : '';
     const effectiveBase = groupPrefix + basePath;
-    const groupControllerPath = this.basePath || controllerPath;
 
     for (const route of this.routes) {
       if (route.asFailRoute || !route.requestable) continue;
@@ -221,10 +220,9 @@ export class Group {
       const childGroup: Group | undefined = route.properties._childGroup;
       const routePath = route.path || '';
       const fullPath = effectiveBase + (routePath ? '/' + routePath.replace(/^\//, '') : '');
-      const routeBaseName = this.baseName || baseName;
 
       if (childGroup) {
-        results.push(...childGroup.listRoutes(fullPath, routeBaseName, groupControllerPath));
+        results.push(...childGroup.listRoutes(fullPath, this.baseName || baseName));
       }
 
       if (route.method) {
@@ -234,7 +232,7 @@ export class Group {
           name: route.name,
           fullPath: (fullPath || '/').replace(/\/+$/, '') || '/',
           fullName: route.fullName,
-          controllerPath: groupControllerPath || '/',
+          controllerPath: route.properties.controllerPath || '',
           controller: route.controller,
           action: route.action,
           tag: route.tag,

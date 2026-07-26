@@ -874,7 +874,7 @@ import { Route, Group, Finding, CallStack, Call, Factory } from '@rosengate/exed
 
 | Class | Description |
 |---|---|
-| `Route` | Single route definition. `name` (relative), `fullName` (dotted path), `path` (relative), `fullPath` (absolute URL), `controllerPath` (controller's `@Path`) |
+| `Route` | Single route definition. `name` (relative), `fullName` (dotted path), `path` (relative), `fullPath` (absolute URL), `controllerPath` (file path to controller) |
 | `Group` | Wraps Express Router. `listRoutes()` returns `RouteInfo[]` with all the above fields |
 | `Finding` | A resolved route match, builds callstack |
 | `CallStack` | Ordered pipeline of middleware + handler calls |
@@ -892,7 +892,7 @@ import { Route, Group, Finding, CallStack, Call, Factory } from '@rosengate/exed
 | `name` | `'get-user'` | Route's own name (relative) |
 | `fullPath` | `'/admin/users/:id'` | Absolute URL path |
 | `fullName` | `'admin.users.get-user'` | Full dotted name with `@Name` prefixes |
-| `controllerPath` | `'/users'` | The controller's `@Path` value |
+| `controllerPath` | `'src/controllers/UsersController.ts'` | File path to the controller source (falls back to class name in test environments) |
 | `controller` | `'UsersController'` | Controller class name |
 | `action` | `'getUser'` | Method name |
 
