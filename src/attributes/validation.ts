@@ -16,7 +16,15 @@ export function createValidationMiddleware(validator: ValidatorFn) {
   return async (req: any, res: any, next: any, ctx?: any) => {
     const rules = ctx?.state('exedra:validation');
     if (rules) {
-      await validator(req.body, rules);
+      const method = (req.method || '').toUpperCase();
+      const hasBody = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+
+      let data: any = { ...req.params, ...req.query };
+      if (hasBody) {
+        data = { ...data, ...req.body };
+      }
+
+      await validator(data, rules);
     }
     return next();
   };

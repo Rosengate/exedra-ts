@@ -738,26 +738,73 @@ The "Target" column shows where each decorator can be applied. The "Wired" colum
 
 ## Validation
 
-Store validation rules via `@Validation` and provide your own validator:
+Store validation rules via `@Validation` and provide your own validator. Data is auto-merged based on HTTP method:
+
+- **GET/HEAD/OPTIONS**: `{ ...req.params, ...req.query }`
+- **POST/PUT/PATCH/DELETE**: `{ ...req.params, ...req.query, ...req.body }`
+
+### Example with Zod
+
+```bash
+npm i zod
+```
 
 ```typescript
-import { createValidationMiddleware, Validation } from '@rosengate/exedra-ts';
+import { z } from 'zod';
+import { createValidationMiddleware, Validation, Middleware, Controller, Path, Get, Post } from '@rosengate/exedra-ts';
 
+const CreateUserSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+});
+
+const ListUsersSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+  sort: z.enum(['asc', 'desc']).default('asc'),
+});
+
+// Validator receives merged data + rules (Zod schemas per field)
+const validate = async (data: any, rules: Record<string, any>) => {
+  for (const [field, schema] of Object.entries(rules)) {
+    if (schema instanceof z.ZodType) {
+      const result = schema.safeParse(data[field]);
+      if (!result.success) {
+        const messages = result.error.issues.map((i) => i.message).join(', ');
+        throw new Error(`${field}: ${messages}`);
+      }
+    }
+  }
+};
+
+@Middleware(createValidationMiddleware(validate))
+@Path('/users')
 class UserController extends Controller {
-  @Path('/users')
+  @Get('')
+  @Validation(ListUsersSchema.shape)
+  listUsers() {
+    return [];
+  }
+
   @Post('')
-  @Validation({ name: 'required', email: 'required|email' })
+  @Validation(CreateUserSchema.shape)
   postUser() {
     return { created: true };
   }
 }
+```
 
-// Provide your own validator function
-const validate = (data: any, rules: Record<string, any>) => {
-  // your validation logic
+The key: `schema.shape` converts a Zod object schema into `Record<string, ZodType>`, which the validator iterates to validate each field.
+
+### Custom validator (no library)
+
+```typescript
+const validate = async (data: any, rules: Record<string, any>) => {
+  for (const [field, rule] of Object.entries(rules)) {
+    if (rule === 'required' && (data[field] === undefined || data[field] === '')) {
+      throw new Error(`${field} is required`);
+    }
+  }
 };
-
-app.use(createValidationMiddleware(validate));
 ```
 
 ## Transformer
