@@ -751,19 +751,9 @@ npm i zod
 
 ```typescript
 import { z } from 'zod';
-import { createValidationMiddleware, Validation, Middleware, Controller, Path, Get, Post } from '@rosengate/exedra-ts';
+import { createValidationMiddleware, Validation, Controller, Path, Get, Post } from '@rosengate/exedra-ts';
 
-const CreateUserSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-});
-
-const ListUsersSchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(10),
-  sort: z.enum(['asc', 'desc']).default('asc'),
-});
-
-// Validator receives merged data + rules (Zod schemas per field)
+// Validator inspects rules and validates each field against Zod schemas
 const validate = async (data: any, rules: Record<string, any>) => {
   for (const [field, schema] of Object.entries(rules)) {
     if (schema instanceof z.ZodType) {
@@ -776,24 +766,30 @@ const validate = async (data: any, rules: Record<string, any>) => {
   }
 };
 
-@Middleware(createValidationMiddleware(validate))
+// Register once at app level — works globally
+app.use(createValidationMiddleware(validate));
+
+// Controllers pass Zod schemas directly
 @Path('/users')
 class UserController extends Controller {
   @Get('')
-  @Validation(ListUsersSchema.shape)
+  @Validation({
+    limit: z.coerce.number().int().min(1).max(100).default(10),
+  })
   listUsers() {
     return [];
   }
 
   @Post('')
-  @Validation(CreateUserSchema.shape)
+  @Validation({
+    name: z.string().min(1),
+    email: z.string().email(),
+  })
   postUser() {
     return { created: true };
   }
 }
 ```
-
-The key: `schema.shape` converts a Zod object schema into `Record<string, ZodType>`, which the validator iterates to validate each field.
 
 ### Custom validator (no library)
 

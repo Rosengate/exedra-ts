@@ -14,7 +14,7 @@ export type ValidatorFn = (data: any, rules: Record<string, any>) => Promise<voi
 
 export function createValidationMiddleware(validator: ValidatorFn) {
   return async (req: any, res: any, next: any, ctx?: any) => {
-    const rules = ctx?.state('exedra:validation');
+    const rules = ctx?.state?.('exedra:validation') ?? req._exedra_context?.state?.('exedra:validation');
     if (rules) {
       const method = (req.method || '').toUpperCase();
       const hasBody = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
