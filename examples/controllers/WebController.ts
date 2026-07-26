@@ -123,7 +123,7 @@ function landingPage(): string {
         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold">1</div>
         <div class="flex-1">
           <h3 class="font-semibold mb-2">Install</h3>
-          <pre class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm overflow-x-auto"><code>npm install @rosengate/exedra-ts express reflect-metadata</code></pre>
+          <pre class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm overflow-x-auto"><code>npm install @rosengate/exedra-ts express</code></pre>
         </div>
       </div>
 
