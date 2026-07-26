@@ -360,41 +360,128 @@ class ApiController extends Controller {
 // Execution: cors → middlewareAuth → getUsers()
 ```
 
-### Error Handling with `await next()`
+### Every Layer Handles Its Own Errors
 
-Middleware runs in an onion model. Use `await next()` to wait for downstream middleware and handlers, then catch any errors:
+The handler throws business errors. Each middleware catches what it understands and re-throws what it doesn't:
 
 ```typescript
-@Path('/api')
-class ApiController extends Controller {
-  async middlewareErrorBoundary(
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction,
-  ) {
-    try {
-      await next(); // waits for all downstream middleware + handler
-    } catch (err: any) {
-      console.error('Caught:', err.message);
-      res.status(500).json({ error: err.message });
+// Database errors → 503
+async middlewareDatabase(req, res, next) {
+  try {
+    await next();
+  } catch (err) {
+    if (err instanceof ConnectionError) {
+      res.status(503).json({ error: 'Database unavailable', retryAfter: 30 });
+    } else if (err instanceof QueryTimeoutError) {
+      res.status(504).json({ error: 'Query timed out' });
+    } else {
+      throw err;
     }
   }
+}
 
-  @Get('/users')
-  getUsers() {
-    throw new Error('Something went wrong');
-    // The error bubbles up to middlewareErrorBoundary's catch block
+// Auth errors → 401
+async middlewareAuth(req, res, next) {
+  try {
+    const user = await verifyToken(req.headers.authorization);
+    req.user = user;
+    await next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      res.status(401).json({ error: 'Session expired', loginUrl: '/auth/refresh' });
+    } else if (err.name === 'JsonWebTokenError') {
+      res.status(401).json({ error: 'Invalid token' });
+    } else {
+      throw err;
+    }
+  }
+}
+
+// Authorization errors → 403
+async middlewareAuthorize(req, res, next) {
+  try {
+    await next();
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      res.status(403).json({ error: 'Access denied', requiredRole: err.requiredRole });
+    } else {
+      throw err;
+    }
+  }
+}
+
+// Rate limiting → 429
+async middlewareRateLimit(req, res, next) {
+  try {
+    await next();
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      res.status(429).json({ error: 'Rate limit exceeded', retryAfter: err.retryAfter });
+      res.setHeader('Retry-After', String(err.retryAfter));
+    } else {
+      throw err;
+    }
+  }
+}
+
+// Global catch-all
+async middlewareGlobalError(req, res, next) {
+  try {
+    await next();
+  } catch (err) {
+    console.error(`[${req.method} ${req.path}]`, err);
+    res.status(500).json({ error: 'Internal server error', requestId: req.id });
   }
 }
 ```
 
-The onion model means middleware runs before AND after downstream:
+The handler just throws — no `res.status()`, no try/catch, no HTTP awareness:
+
+```typescript
+class OrderController {
+  @Post('/orders')
+  async createOrder(@Body() body: CreateOrderDto) {
+    const user = await db.findUser(body.userId);
+    if (!user) throw new NotFoundError('User not found');
+
+    const inventory = await db.checkInventory(body.items);
+    if (!inventory.available) throw new InsufficientStockError(inventory.missing);
+
+    const order = await db.createOrder(body);
+    if (!order) throw new DatabaseError('Failed to create order');
+
+    return order;
+  }
+}
+```
+
+Each middleware is a **single-responsibility error filter**. It either handles the error or passes it up:
+
+```
+createOrder()
+  → throws DatabaseError
+  → globalError catches → re-throw
+  → database catches → 503 "Database unavailable" ✓ STOP
+
+createOrder()
+  → throws NotFoundError
+  → globalError catches → re-throw
+  → database catches → re-throw (not a DB error)
+  → auth catches → re-throw (not auth error)
+  → authorize catches → re-throw (not auth error)
+  → globalError catches → 500 (last resort)
+```
+
+### The Onion Model
+
+Middleware runs before AND after downstream, so you can wrap entire sections of the pipeline:
 
 ```typescript
 async middlewareTiming(req, res, next) {
-  console.log('before');  // runs first
-  await next();           // waits for downstream
-  console.log('after');   // runs after downstream completes
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  res.setHeader('X-Response-Time', `${ms}ms`);
 }
 ```
 

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import express from 'express';
 import http from 'http';
-import { Controller, Path, Get, createExedra } from '../src';
+import { Controller, Path, Get, Param, createExedra } from '../src';
 
 function request(
   app: express.Application,
@@ -390,6 +390,206 @@ describe('Onion-style middleware', () => {
       const res = await request(app, '/items');
       expect(res.status).toBe(200);
       expect(JSON.parse(res.body)).toEqual({ data: { test: 'ok?' } });
+    });
+  });
+
+  describe('multi-layer error handling', () => {
+    it('each middleware layer catches its own error type', async () => {
+      class DatabaseError extends Error {
+        code = 'DB_ERROR';
+      }
+
+      class AuthError extends Error {
+        code = 'AUTH_ERROR';
+      }
+
+      @Path('/items')
+      class ItemsController extends Controller {
+        async middlewareDatabase(
+          _req: any,
+          res: express.Response,
+          next: express.NextFunction,
+        ) {
+          try {
+            await next();
+          } catch (err: any) {
+            if (err.code === 'DB_ERROR') {
+              res.status(503).json({ error: 'Database unavailable' });
+            } else {
+              throw err;
+            }
+          }
+        }
+
+        async middlewareAuth(
+          _req: any,
+          res: express.Response,
+          next: express.NextFunction,
+        ) {
+          try {
+            await next();
+          } catch (err: any) {
+            if (err.code === 'AUTH_ERROR') {
+              res.status(401).json({ error: 'Unauthorized' });
+            } else {
+              throw err;
+            }
+          }
+        }
+
+        @Get('')
+        getItems() {
+          throw new DatabaseError('Connection refused');
+        }
+      }
+
+      class Root extends Controller {
+        groupItems() { return ItemsController; }
+      }
+
+      const app = express();
+      createExedra(app, { controller: Root, useFlatRouting: true });
+
+      const res = await request(app, '/items');
+      expect(res.status).toBe(503);
+      expect(JSON.parse(res.body)).toEqual({ error: 'Database unavailable' });
+    });
+
+    it('error bubbles through layers that dont handle it', async () => {
+      class ForbiddenError extends Error {
+        status = 403;
+      }
+
+      @Path('/items')
+      class ItemsController extends Controller {
+        async middlewareRateLimit(
+          _req: any,
+          res: express.Response,
+          next: express.NextFunction,
+        ) {
+          try {
+            await next();
+          } catch (err: any) {
+            if (err.code === 'RATE_LIMITED') {
+              res.status(429).json({ error: 'Too many requests' });
+            } else {
+              throw err;
+            }
+          }
+        }
+
+        async middlewareAuth(
+          _req: any,
+          res: express.Response,
+          next: express.NextFunction,
+        ) {
+          try {
+            await next();
+          } catch (err: any) {
+            if (err instanceof ForbiddenError) {
+              res.status(403).json({ error: 'Access denied' });
+            } else {
+              throw err;
+            }
+          }
+        }
+
+        @Get('')
+        getItems() {
+          throw new ForbiddenError('No access');
+        }
+      }
+
+      class Root extends Controller {
+        groupItems() { return ItemsController; }
+      }
+
+      const app = express();
+      createExedra(app, { controller: Root, useFlatRouting: true });
+
+      const res = await request(app, '/items');
+      expect(res.status).toBe(403);
+      expect(JSON.parse(res.body)).toEqual({ error: 'Access denied' });
+    });
+
+    it('global catch-all handles unhandled errors', async () => {
+      @Path('/items')
+      class ItemsController extends Controller {
+        async middlewareGlobalError(
+          _req: any,
+          res: express.Response,
+          next: express.NextFunction,
+        ) {
+          try {
+            await next();
+          } catch {
+            res.status(500).json({ error: 'Internal server error' });
+          }
+        }
+
+        @Get('')
+        getItems() {
+          throw new Error('Something unexpected');
+        }
+      }
+
+      class Root extends Controller {
+        groupItems() { return ItemsController; }
+      }
+
+      const app = express();
+      createExedra(app, { controller: Root, useFlatRouting: true });
+
+      const res = await request(app, '/items');
+      expect(res.status).toBe(500);
+      expect(JSON.parse(res.body)).toEqual({ error: 'Internal server error' });
+    });
+
+    it('handler throws domain error — correct layer catches it', async () => {
+      class NotFoundError extends Error {
+        statusCode = 404;
+      }
+
+      @Path('/items')
+      class ItemsController extends Controller {
+        async middlewareNotFound(
+          _req: any,
+          res: express.Response,
+          next: express.NextFunction,
+        ) {
+          try {
+            await next();
+          } catch (err: any) {
+            if (err.statusCode === 404) {
+              res.status(404).json({ error: err.message });
+            } else {
+              throw err;
+            }
+          }
+        }
+
+        @Get('/:id')
+        getItem(req: express.Request) {
+          const id = req.params.id;
+          if (id === '999') throw new NotFoundError('Item not found');
+          return { id, name: 'Widget' };
+        }
+      }
+
+      class Root extends Controller {
+        groupItems() { return ItemsController; }
+      }
+
+      const app = express();
+      createExedra(app, { controller: Root, useFlatRouting: true });
+
+      const found = await request(app, '/items/1');
+      expect(found.status).toBe(200);
+      expect(JSON.parse(found.body)).toEqual({ id: '1', name: 'Widget' });
+
+      const notFound = await request(app, '/items/999');
+      expect(notFound.status).toBe(404);
+      expect(JSON.parse(notFound.body)).toEqual({ error: 'Item not found' });
     });
   });
 });

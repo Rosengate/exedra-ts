@@ -315,3 +315,40 @@ If Express supported `const result = next()` natively (returning the downstream 
 3. **5 branching paths**: The `callNext` function has 5 branches to handle every combination of sync/async × called-next/didn't-call-next. PHP has one path.
 
 4. **Response sender outside chain**: To let middleware modify the response before it's sent, the response sender had to be pulled out of the chain and run after it completes. This adds complexity to `buildHandlers`.
+
+### Error handling: the key differentiator
+
+The onion model gives exedra-ts a unique advantage for error handling. Each middleware layer is a **single-responsibility error filter** — it catches what it understands and re-throws what it doesn't.
+
+**Express**: errors go straight to the global `(err, req, res, next)` handler. No middleware can catch errors from downstream middleware.
+
+**NestJS**: exception filters catch errors, but they're a separate abstraction — they don't know which guard/interceptor/middleware threw.
+
+**exedra-ts**: errors flow through the middleware chain. Each layer decides whether to handle or re-throw:
+
+```typescript
+// Each layer catches its own domain
+async middlewareDatabase(req, res, next) {
+  try { await next(); }
+  catch (err) {
+    if (err instanceof ConnectionError) res.status(503).json({ error: 'DB unavailable' });
+    else throw err;  // pass to the next error handler
+  }
+}
+
+async middlewareAuth(req, res, next) {
+  try { await next(); }
+  catch (err) {
+    if (err.name === 'TokenExpiredError') res.status(401).json({ error: 'Session expired' });
+    else throw err;
+  }
+}
+
+// Global catch-all
+async middlewareGlobalError(req, res, next) {
+  try { await next(); }
+  catch { res.status(500).json({ error: 'Internal server error' }); }
+}
+```
+
+This pattern is not possible in Express (errors bypass middleware) or NestJS (exception filters are disconnected from the middleware pipeline). It's only possible because the onion model lets middleware observe what happens downstream — including errors.
