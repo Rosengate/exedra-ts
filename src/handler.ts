@@ -39,6 +39,18 @@ class Handler {
       group.basePath = classMeta.path;
     }
 
+    if (classMeta.name) {
+      group.baseName = String(classMeta.name);
+    }
+
+    if (classMeta.middleware) {
+      for (const entry of classMeta.middleware) {
+        if (typeof entry === 'function') {
+          group.addMiddleware(entry);
+        }
+      }
+    }
+
     const proto = controllerClass.prototype;
     const methodNames = Object.getOwnPropertyNames(proto);
 
@@ -85,6 +97,9 @@ class Handler {
         } else if (methodMeta.method || methodMeta.path) {
           type = 'execute';
           routeName = kebabCase(methodName);
+        } else if (methodMeta.asFailRoute) {
+          type = 'execute';
+          routeName = 'fail-route';
         } else {
           continue;
         }
@@ -101,6 +116,16 @@ class Handler {
       }
       if (classMeta.serieses) {
         properties.serieses = { ...(classMeta.serieses || {}), ...(properties.serieses || {}) };
+      }
+
+      if (classMeta.method && !properties.method) {
+        properties.method = String(classMeta.method);
+      }
+      if (classMeta.requestable !== undefined && properties.requestable === undefined) {
+        properties.requestable = classMeta.requestable;
+      }
+      if (classMeta.config) {
+        properties.config = { ...(classMeta.config || {}), ...(properties.config || {}) };
       }
 
       properties.controller = controllerClass.name;
@@ -147,6 +172,7 @@ class Handler {
 
       if (type === 'subroutes' && childClass) {
         const childGroup = factory.createGroup([], route);
+        childGroup.baseName = group.baseName ? `${group.baseName}.${name}` : name;
         this.resolveGroupInto(childClass, childGroup, factory);
         route.properties._childGroup = childGroup;
       } else if (type === 'subroutes_call') {

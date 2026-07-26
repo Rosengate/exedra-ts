@@ -32,7 +32,7 @@ const rootGroup = createExedra(app, {
   useFlatRouting: true
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3545;
 
 // --routes flag: list all routes and exit
 if (process.argv.includes('--routes')) {
@@ -53,5 +53,5 @@ if (process.argv.includes('--routes')) {
 }
 
 app.listen(PORT, () => {
-  console.log('  exedra-ts example app running');
+  console.log(`  exedra-ts example app running on http://localhost:${PORT}`);
 });

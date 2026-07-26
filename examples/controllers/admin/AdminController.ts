@@ -1,9 +1,10 @@
 import express from 'express';
-import { Controller, Path, Get } from '../../../src';
+import {Controller, Path, Get, Name} from '../../../src';
 import AdminSettingsController from './SettingsController';
 import AdminStatsController from './StatsController';
 
 @Path('/admin')
+@Name('admin')
 class AdminController extends Controller {
   middlewareAuth(
     req: express.Request,

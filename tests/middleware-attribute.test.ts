@@ -198,7 +198,7 @@ describe('@Middleware attribute', () => {
   });
 
   describe('@Middleware vs middleware* coexistence', () => {
-    it('@Middleware metadata is stored but middleware* methods are what execute', async () => {
+    it('@Middleware function runs alongside middleware* methods', async () => {
       const order: string[] = [];
 
       function ExternalMiddleware(
@@ -240,8 +240,9 @@ describe('@Middleware attribute', () => {
 
       const res = await request(app, '/items');
       expect(res.status).toBe(200);
-      // Only middleware* prefix methods execute; @Middleware metadata is stored but not executed
-      expect(order).toEqual(['internal', 'handler']);
+      // Class-level @Middleware runs first (added via group.addMiddleware),
+      // then middleware* methods (added during method iteration)
+      expect(order).toEqual(['external', 'internal', 'handler']);
     });
   });
 });

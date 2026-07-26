@@ -305,30 +305,53 @@ class AdminController extends Controller {
 
 ### Attribute-Based Middleware
 
-Attach external middleware classes using the `@Middleware` attribute. This stores middleware metadata on the route for introspection:
+Pass middleware functions directly to `@Middleware`. Class-level runs for all routes in the controller:
 
 ```typescript
-@Middleware(AuthMiddleware)
-@Middleware(RateLimitMiddleware)
+function auth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!req.headers.authorization) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
+
+@Middleware(auth)
 @Path('/api')
 class ApiController extends Controller {
-  // Metadata stored: [AuthMiddleware, RateLimitMiddleware]
-  // Use middleware* prefix methods for actual runtime execution
+  @Get('/users')
+  getUsers() { return []; }  // auth runs before this
 }
 ```
 
-> **Note**: `@Middleware` stores metadata but does not execute middleware at runtime. Use `middleware*` prefix methods for middleware that actually runs.
+Method-level `@Middleware` runs for one route only:
+
+```typescript
+@Path('/api')
+class ApiController extends Controller {
+  @Get('/public')
+  getPublic() { return []; }  // no auth
+
+  @Get('/admin')
+  @Middleware(auth)
+  getAdmin() { return []; }   // auth runs before this only
+}
+```
 
 ### Combining Both
 
-`@Middleware` stores metadata; `middleware*` methods execute at runtime:
+`@Middleware` and `middleware*` methods both run. Execution order: class `@Middleware` → `middleware*` prefix methods → method `@Middleware` → handler:
 
 ```typescript
-@Middleware(CorsMiddleware)  // stores metadata only
+function cors(req: express.Request, res: express.Response, next: express.NextFunction) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+}
+
+@Middleware(cors)
 @Path('/api')
 class ApiController extends Controller {
   middlewareAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-    next();  // this actually executes
+    next();
   }
 
   @Get('/users')
@@ -336,7 +359,7 @@ class ApiController extends Controller {
     return [];
   }
 }
-// Execution: middlewareAuth → getUsers()
+// Execution: cors → middlewareAuth → getUsers()
 ```
 
 ### Subrouting Inherits Parent Middleware
@@ -647,35 +670,75 @@ middlewareLegacy(req: any, res: any, next: any) {
 
 ## Attributes Reference
 
-| Attribute | Target | Repeatable | Description |
-|---|---|---|---|
-| `@Path(path)` | class + method | No | Sets the route path |
-| `@Name(name)` | class + method | No | Sets the route name |
-| `@Method(verb)` | class + method | No | Sets HTTP method(s) |
-| `@Middleware(Class)` | class + method | Yes | Stores middleware metadata (use `middleware*` for execution) |
-| `@Decorator(Class)` | class + method | Yes | Stores decorator metadata (use `decorate*` for execution) |
-| `@Requestable(bool)` | class + method | No | Whether route appears in dispatch |
-| `@FailRoute` | method | No | Marks as fail route |
-| `@Tag(name)` | class + method | No | Tags the route |
-| `@State(key, val)` | class + method | Yes | Generic key/value state |
-| `@Series(key, val)` | class + method | Yes | Repeatable key/value pairs |
-| `@Flag(name)` | class + method | Yes | Boolean flags |
-| `@Config(key, val)` | class + method | Yes | Configuration values |
-| `@Validation(rules)` | class + method | No | Validation rules (as route state) |
-| `@Transformer(Class)` | class + method | No | Transformer class (as route state) |
-| `@Include(key)` | method (on transformer) | Yes | Registers optional include for transformer |
-| `@Param(key?)` | parameter | Yes | Reads from `req.params[key]` |
-| `@Body(key?)` | parameter | Yes | Reads from `req.body[key]` |
-| `@Query(key?)` | parameter | Yes | Reads from `req.query[key]` |
-| `@Header(key?)` | parameter | Yes | Reads from `req.headers[key]` |
-| `@Req()` | parameter | No | Raw Express Request |
-| `@Res()` | parameter | No | Raw Express Response |
-| `@Next()` | parameter | No | Express NextFunction |
-| `@Ctx()` | parameter | No | Per-request Context (child scope of app Container) |
-| `@Inject(token)` | parameter | Yes | Explicit injection by class or string token (transpile-safe) |
-| `@State(key?)` | parameter | Yes | Reads from route state |
-| `@Flag(name?)` | parameter | Yes | Checks if flag is set |
-| `@Series(key?)` | parameter | Yes | Reads from route series |
+The "Target" column shows where each decorator can be applied. The "Wired" column shows which targets are actually consumed at runtime — class-level metadata that isn't wired is stored but has no effect.
+
+### Route & Path
+
+| Attribute | Target | Wired | Repeatable | Description |
+|---|---|---|---|---|
+| `@Path(path)` | class + method | class + method | No | Sets the route path |
+| `@Name(name)` | class + method | class (replaces default) + method | No | Class-level replaces the default name from `group*` method. Method-level sets the route name. Use `route.fullName` for the full dotted path, `route.name` for local name only. |
+| `@Method(verb)` | class + method | class (default) + method | No | Class-level sets default HTTP method for all routes. Method-level overrides. |
+| `@Requestable(bool)` | class + method | class (applies to all) + method (overrides) | No | Class-level `false` disables all routes. Method-level `true` overrides class-level. |
+| `@Tag(name)` | method | method only | No | Tags the route |
+| `@Config(key, val)` | class + method | class + method | Yes | Class-level config merges into all routes. Method-level overrides same keys. |
+
+### Middleware
+
+| Attribute | Target | Wired | Repeatable | Description |
+|---|---|---|---|---|
+| `@Middleware(fn)` | class + method | class (all routes) + method (one route) | Yes | Accepts a middleware function. Class-level runs for all routes in the controller. Method-level runs for that route only. Runs in order: class `@Middleware` → `middleware*` prefix → method `@Middleware` → handler. |
+
+### Decorators (metadata only)
+
+| Attribute | Target | Wired | Repeatable | Description |
+|---|---|---|---|---|
+| `@Decorator(Class)` | class + method | metadata only | Yes | Stores decorator metadata — use `decorate*` prefix methods for execution |
+
+### State, Flags & Series (class-level propagates to all routes)
+
+| Attribute | Target | Wired | Repeatable | Description |
+|---|---|---|---|---|
+| `@State(key, val)` | class + method + param | class + method + param | Yes | Generic key/value state |
+| `@Flag(name)` | class + method + param | class + method + param | Yes | Boolean flags |
+| `@Series(key, val)` | class + method + param | class + method + param | Yes | Repeatable key/value pairs |
+
+### Validation & Transformer (class-level propagates via state merge)
+
+| Attribute | Target | Wired | Repeatable | Description |
+|---|---|---|---|---|
+| `@Validation(rules)` | class + method | class (indirect) + method | No | Validation rules (stored in route state) |
+| `@Transformer(Class)` | class + method | class (indirect) + method | No | Transformer class (stored in route state) |
+| `@Include(key)` | method (on transformer) | method only | Yes | Registers optional include for transformer |
+
+### Catch-All
+
+| Attribute | Target | Wired | Repeatable | Description |
+|---|---|---|---|---|
+| `@FailRoute` | method | method only | No | Group-level catch-all for unmatched routes. **Method-only** — applying to a class throws an error. Works with or without parentheses: `@FailRoute` or `@FailRoute()`. |
+
+### Parameter Injection
+
+| Attribute | Target | Wired | Repeatable | Description |
+|---|---|---|---|---|
+| `@Param(key?)` | parameter | parameter | Yes | Reads from `req.params[key]` |
+| `@Body(key?)` | parameter | parameter | Yes | Reads from `req.body[key]` |
+| `@Query(key?)` | parameter | parameter | Yes | Reads from `req.query[key]` |
+| `@Header(key?)` | parameter | parameter | Yes | Reads from `req.headers[key]` |
+| `@Req()` | parameter | parameter | No | Raw Express Request |
+| `@Res()` | parameter | parameter | No | Raw Express Response |
+| `@Next()` | parameter | parameter | No | Express NextFunction |
+| `@Ctx()` | parameter | parameter | No | Per-request Context (child scope of app Container) |
+| `@Inject(token)` | parameter | parameter | Yes | Explicit injection by class or string token (transpile-safe) |
+| `@State(key?)` | parameter | parameter | Yes | Reads from route state |
+| `@Flag(name?)` | parameter | parameter | Yes | Checks if flag is set |
+| `@Series(key?)` | parameter | parameter | Yes | Reads from route series |
+
+#### Wired vs Metadata-Only
+
+- **Wired**: The decorator's metadata is read at runtime and affects behavior (e.g., `@Path` sets the route URL, `@Middleware(fn)` registers middleware, `@Name` prefixes route names)
+- **Metadata only**: The decorator stores data that can be introspected via `Reflect.getMetadata()`, but the framework doesn't act on it at runtime. Currently only `@Decorator` falls into this category — use `decorate*` prefix methods instead.
+- **Indirect**: The decorator stores data inside route `states`, which are merged from class-level into every route via `handler.ts`
 
 ## Validation
 
@@ -811,7 +874,7 @@ import { Route, Group, Finding, CallStack, Call, Factory } from '@rosengate/exed
 
 | Class | Description |
 |---|---|
-| `Route` | A single route definition with properties |
+| `Route` | A single route definition with properties. `route.name` = local name, `route.fullName` = full dotted path |
 | `Group` | Wraps Express Router, supports nesting |
 | `Finding` | A resolved route match, builds callstack |
 | `CallStack` | Ordered pipeline of middleware + handler calls |

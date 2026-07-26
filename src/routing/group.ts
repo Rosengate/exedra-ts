@@ -28,6 +28,7 @@ export class Group {
   useFlatRouting: boolean = false;
   container?: Container;
   basePath: string = '';
+  baseName: string = '';
 
   constructor(factory: Factory, parentRoute: any = null, _routes: any[] = []) {
     this.factory = factory;
@@ -225,7 +226,7 @@ export class Group {
         results.push({
           method: route.method,
           path: (fullPath || '/').replace(/\/+$/, '') || '/',
-          name: route.name,
+          name: route.fullName,
           controller: route.controller,
           action: route.action,
           tag: route.tag,
@@ -272,6 +273,11 @@ export class Group {
         (router[verb] as any)(fullPath || '/', ...this.buildHandlers(route));
       }
     }
+
+    if (this.hasFailRoute()) {
+      const failRoute = this.getFailRoute()!;
+      router.use(prefix || '/', ...this.buildHandlers(failRoute));
+    }
   }
 
   private _registerRoutesExpress(router: express.Router): void {
@@ -296,6 +302,11 @@ export class Group {
       if (typeof router[verb] === 'function') {
         (router[verb] as any)(fullPath || '/', ...this.buildHandlers(route));
       }
+    }
+
+    if (this.hasFailRoute()) {
+      const failRoute = this.getFailRoute()!;
+      router.use(...this.buildHandlers(failRoute));
     }
   }
 

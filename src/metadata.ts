@@ -6,7 +6,7 @@ export interface RouteMetadata {
   path?: string;
   method?: string;
   name?: string;
-  middleware?: string[];
+  middleware?: (string | Function)[];
   decorator?: string[];
   requestable?: boolean;
   asFailRoute?: boolean;

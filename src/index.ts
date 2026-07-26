@@ -70,6 +70,26 @@ export { Path } from './attributes';
 
 /**
  * Set a human-readable name for a route (used for URL generation).
+ *
+ * At class level, replaces the default name derived from the `group*` method name.
+ * Access the full dotted name via `route.fullName`, or the local name via `route.name`.
+ *
+ * Without `@Name`, the `group*` method name provides the default prefix:
+ * `groupBlogs()` → baseName is `'blogs'`, routes get `fullName` like `blogs.get-posts`.
+ *
+ * With `@Name('api')`, it replaces the default: `fullName` becomes `api.get-posts`.
+ *
+ * @example
+ * ```typescript
+ * @Name('admin')          // replaces default from groupAdmin()
+ * @Path('/users')
+ * class UsersController extends Controller {
+ *   @Get('')
+ *   @Name('list')
+ *   listUsers() {}
+ *   // route.name → 'list', route.fullName → 'admin.list'
+ * }
+ * ```
  */
 export { Name } from './attributes';
 
@@ -79,9 +99,20 @@ export { Name } from './attributes';
 export { Method } from './attributes';
 
 /**
- * Attach an external middleware class to a controller or route.
- * Note: `middleware*` prefix methods are what actually execute at runtime.
- * This decorator stores metadata for documentation/introspection.
+ * Attach a middleware function to a controller (all routes) or a single route.
+ * Accepts a middleware function with `(req, res, next)` signature.
+ *
+ * @example
+ * ```typescript
+ * function auth(req: any, res: any, next: any) {
+ *   if (!req.headers.authorization) return res.status(401).json({ error: 'Unauthorized' });
+ *   next();
+ * }
+ *
+ * @Middleware(auth)
+ * @Path('/api')
+ * class ApiController extends Controller { ... }
+ * ```
  */
 export { Middleware } from './attributes';
 
@@ -99,8 +130,23 @@ export { Decorator } from './attributes';
 export { Requestable } from './attributes';
 
 /**
- * Mark a route as a fail route (non-requestable catch-all).
- * Routes with this decorator are excluded from Express registration.
+ * Mark a route as a group-level catch-all for unmatched routes.
+ * When no route in the group matches a request, this handler fires.
+ * Scoped to its group — parent groups can have their own `@FailRoute`.
+ *
+ * @example
+ * ```typescript
+ * @Path('/users')
+ * class UsersController extends Controller {
+ *   @Get('')
+ *   list() { return []; }
+ *
+ *   @FailRoute
+ *   notFound() { return { error: 'users not found' }; }
+ * }
+ * // GET /users      → list()
+ * // GET /users/xyz  → notFound()
+ * ```
  */
 export { FailRoute } from './attributes';
 

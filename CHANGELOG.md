@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LICENSE` file (MIT)
 - `CHANGELOG.md`
 - `@Head` and `@Options` HTTP method decorators
+- `@FailRoute` catch-all behavior — unmatched routes in a group now invoke the `@FailRoute` handler instead of returning 404
 - Test coverage for `@Middleware` attribute metadata storage
 - Test coverage for `@Decorator` attribute metadata storage and `Finding.getCallStack()` integration
-- Test coverage for `@FailRoute` metadata storage, handler registration, and `Group.hasFailRoute()`/`Group.getFailRoute()`
+- Test coverage for `@FailRoute` metadata storage, handler registration, catch-all integration (Express + flat mode), multi-group scoping, and `Group.hasFailRoute()`/`Group.getFailRoute()`
 - Test coverage for `@Head` and `@Options` decorator metadata
+- Express compatibility test suite (basic routing, query params, middleware, subrouting, named auto-inject)
+- TSDoc comments on all public API exports
 
 ### Fixed
 - Jest worker process teardown warning — all `setTimeout` timers in test helpers are now cleared on success, preventing open handle leaks
@@ -22,7 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Limitations
 - `@Middleware` attribute stores middleware class references in metadata but does not execute them at runtime. Use `middleware*` prefix methods for actual middleware execution.
 - `@Decorator` attribute stores decorator class references in metadata but does not execute them in the request pipeline. Use `decorate*` prefix methods for response decoration.
-- `@FailRoute` stores `asFailRoute: true` in metadata and marks routes as non-requestable, but no catch-all mechanism is implemented in the Express request pipeline. Use `Group.hasFailRoute()` and `Group.getFailRoute()` for manual handling.
 
 ## [0.2.0] - 2026-07-20
 

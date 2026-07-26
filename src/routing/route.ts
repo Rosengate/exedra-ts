@@ -16,6 +16,11 @@ export class Route {
     this.properties = properties;
   }
 
+  get fullName(): string {
+    const prefix = this.group.baseName ? this.group.baseName + '.' : '';
+    return prefix + this.name;
+  }
+
   get path(): string {
     return this.properties.path || '';
   }
