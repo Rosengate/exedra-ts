@@ -1,15 +1,14 @@
 import { Controller, Group } from '../../src';
-import ApisController from "./ApisController";
+import ApisController from './ApisController';
+import WebController from './WebController';
 
 class RootController extends Controller {
-  get() {
-    return {
-      status: 'ok',
-    }
-  }
-
   groupApis() {
     return ApisController;
+  }
+
+  groupWeb() {
+    return WebController;
   }
 }
 
