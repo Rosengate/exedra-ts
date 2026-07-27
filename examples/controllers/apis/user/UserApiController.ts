@@ -1,5 +1,11 @@
-import {Controller, Delete, Get, Include, Name, Path, Put, Transformer, Validation} from "../../../../src";
+import {Context, Controller, Delete, Get, Include, Name, Path, Put, Transformer, Validation} from "../../../../src";
 import {posts, users} from "../../../data";
+
+class User {
+  id: number = 1;
+  name: string = 'Alice';
+  email: string = 'alice@google.com';
+}
 
 class UserTransformer {
   transform(user: any) {
@@ -31,6 +37,16 @@ class UserTransformer {
 
 @Path('/:user-id')
 export default class UserApiController extends Controller {
+  async middleware(req: any, res: any, next: any, ctx: Context) {
+    ctx.service(User, {
+      id: 1,
+      name: 'Alice Updated',
+      email: 'alice@example.com',
+    });
+
+    return await next();
+  }
+
   @Get('/:id')
   @Transformer(UserTransformer)
   getUser(id: string) {

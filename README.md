@@ -1119,15 +1119,16 @@ npm i zod
 ```typescript
 import { z } from 'zod';
 import {
-  createValidationMiddleware,
-  Validation,
   Controller,
   Path,
   Get,
   Post,
+  Middleware,
+  Validation,
+  createValidationMiddleware,
 } from '@rosengate/exedra-ts';
 
-// Validator inspects rules and validates each field against Zod schemas
+// Your validator — inspect rules and validate each field against Zod schemas
 const validate = async (data: any, rules: Record<string, any>) => {
   for (const [field, schema] of Object.entries(rules)) {
     if (schema instanceof z.ZodType) {
@@ -1140,10 +1141,10 @@ const validate = async (data: any, rules: Record<string, any>) => {
   }
 };
 
-// Register once at app level — works globally
-app.use(createValidationMiddleware(validate));
-
-// Controllers pass Zod schemas directly
+// Use @Middleware on the controller — NOT app.use()
+// Validation middleware needs access to route metadata (the @Validation rules),
+// which is only available inside the exedra pipeline via the per-request Context.
+@Middleware(createValidationMiddleware(validate))
 @Path('/users')
 class UserController extends Controller {
   @Get('')
@@ -1176,6 +1177,8 @@ const validate = async (data: any, rules: Record<string, any>) => {
   }
 };
 ```
+
+Wire it up the same way — `@Middleware(createValidationMiddleware(validate))` on the controller class. The validator receives the merged request data and the `@Validation` rules from the route.
 
 ## Transformer
 

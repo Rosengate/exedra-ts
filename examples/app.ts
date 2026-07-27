@@ -1,5 +1,5 @@
 import express from 'express';
-import {createExedra, createValidationMiddleware} from '../src';
+import { createExedra } from '../src';
 import RootController from './controllers/RootController';
 
 const app = express();
@@ -28,7 +28,7 @@ app.use((_req: express.Request, res: express.Response, next: express.NextFunctio
 const rootGroup = createExedra(app, {
   controller: RootController,
   namedParamAutoInject: true,
-  useFlatRouting: true
+  useFlatRouting: true,
 });
 
 const PORT = process.env.PORT || 3545;
