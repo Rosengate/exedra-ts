@@ -3,7 +3,7 @@ import { users, posts } from '../../../data';
 
 @Path('/stats')
 @Name('stats')
-class AdminStatsController extends Controller {
+export default class AdminStatsController extends Controller {
   @Get('')
   getStats() {
     return {
@@ -13,5 +13,3 @@ class AdminStatsController extends Controller {
     };
   }
 }
-
-export default AdminStatsController;

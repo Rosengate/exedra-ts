@@ -38,9 +38,11 @@ export default class ProfileController extends Controller {
     name: 'required',
     email: 'required|email',
   })
-  postProfile() {
+  postProfile(@Inject(User) user: User) {
     return {
-      test: 'no workinggg'
+      id: user.id,
+      name: user.name,
+      email: user.email
     }
   }
 

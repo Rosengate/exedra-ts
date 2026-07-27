@@ -1,7 +1,7 @@
 import { Controller, Path } from '../../../src';
 
 @Path('/health')
-class HealthController extends Controller {
+export default class HealthController extends Controller {
   get() {
     return {
       status: 'ok',
@@ -9,5 +9,3 @@ class HealthController extends Controller {
     };
   }
 }
-
-export default HealthController;

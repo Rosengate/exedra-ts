@@ -22,12 +22,12 @@ export default class UsersController extends Controller {
     next();
   }
 
-  middlewareRateLimit(
+  async middlewareRateLimit(
     req: express.Request,
     res: express.Response,
     next: express.NextFunction,
   ) {
-    next();
+    return await next();
   }
 
   @Get('')

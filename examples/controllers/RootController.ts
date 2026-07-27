@@ -6,7 +6,7 @@ import WebController from './WebController';
   console.log('Validation data:', data);
   console.log('Validation rules:', rules);
 }))
-class RootController extends Controller {
+export default class RootController extends Controller {
   groupApis() {
     return ApisController;
   }
@@ -15,5 +15,3 @@ class RootController extends Controller {
     return WebController;
   }
 }
-
-export default RootController;

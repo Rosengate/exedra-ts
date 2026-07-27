@@ -5,7 +5,7 @@ import AdminStatsController from './StatsController';
 
 @Path('/admin')
 @Name('admin')
-class AdminController extends Controller {
+export default class AdminController extends Controller {
   middlewareAuth(
     req: express.Request,
     _res: express.Response,
@@ -40,5 +40,3 @@ class AdminController extends Controller {
     };
   }
 }
-
-export default AdminController;
