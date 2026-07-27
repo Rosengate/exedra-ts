@@ -19,7 +19,7 @@ class PostTransformer {
 
 @Path('/posts')
 @Tag('api')
-class PostController extends Controller {
+export default class PostController extends Controller {
   middlewareAuth(
     req: express.Request,
     res: express.Response,
@@ -71,5 +71,3 @@ class PostController extends Controller {
     };
   }
 }
-
-export default PostController;
