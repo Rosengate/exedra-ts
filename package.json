@@ -1,6 +1,6 @@
 {
   "name": "@rosengate/exedra-ts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Class/convention-based routing for Express.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
