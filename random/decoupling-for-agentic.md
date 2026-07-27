@@ -649,6 +649,10 @@ Mastra uses TypeScript but relies on explicit `workflow.addStep()` calls. exedra
 
 ---
 
+> **See also:** [case-comparison.md](decoupling-for-agentic/case-comparison.md) — the same customer support agent implemented in LangGraph, Mastra, Vercel AI SDK, and the proposed exedra-ts model, with a feature matrix and decision guide.
+
+---
+
 ## What to Build First
 
 If pursuing this, the highest-signal prototype is:
