@@ -44,11 +44,7 @@ import { Controller, Path, Get, Post, Param, Body } from '@rosengate/exedra-ts';
 @Path('/users')
 export default class UserController extends Controller {
   // middleware* prefix = runs for ALL routes in this controller
-  middlewareAuth(
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction,
-  ) {
+  middlewareAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
     if (!req.headers.authorization) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
@@ -210,20 +206,20 @@ app.listen(3000);
 
 Every method in a controller must follow a prefix convention. The method name prefix determines its role:
 
-| Prefix | Role | Example | Behavior |
-|---|---|---|---|
-| `middleware*` | Group middleware | `middlewareAuth()` | Runs for ALL routes in the controller |
-| `decorate*` | Decorator | `decorateTransform()` | Wraps the response for all routes |
-| `setup*` | Direct group setup | `setupRoutes(group)` | Receives Group for manual route registration |
-| `execute*` | Named route | `executeIndex()` | Route with name derived from suffix |
-| `group*` | Deferred subrouting | `groupUsers()` | Returns a controller class |
-| `get*` | GET route | `getProducts()` | GET method, name from suffix |
-| `post*` | POST route | `postUser()` | POST method, name from suffix |
-| `put*` | PUT route | `putUser()` | PUT method, name from suffix |
-| `delete*` | DELETE route | `deleteUser()` | DELETE method, name from suffix |
-| `patch*` | PATCH route | `patchStatus()` | PATCH method, name from suffix |
-| `sub*` | Immediate subrouting | `subDashboard(group)` | Receives Group for inline nesting |
-| `route*` | Route customization | `routeFaq(route)` | Receives Route for OO customization |
+| Prefix        | Role                 | Example               | Behavior                                     |
+| ------------- | -------------------- | --------------------- | -------------------------------------------- |
+| `middleware*` | Group middleware     | `middlewareAuth()`    | Runs for ALL routes in the controller        |
+| `decorate*`   | Decorator            | `decorateTransform()` | Wraps the response for all routes            |
+| `setup*`      | Direct group setup   | `setupRoutes(group)`  | Receives Group for manual route registration |
+| `execute*`    | Named route          | `executeIndex()`      | Route with name derived from suffix          |
+| `group*`      | Deferred subrouting  | `groupUsers()`        | Returns a controller class                   |
+| `get*`        | GET route            | `getProducts()`       | GET method, name from suffix                 |
+| `post*`       | POST route           | `postUser()`          | POST method, name from suffix                |
+| `put*`        | PUT route            | `putUser()`           | PUT method, name from suffix                 |
+| `delete*`     | DELETE route         | `deleteUser()`        | DELETE method, name from suffix              |
+| `patch*`      | PATCH route          | `patchStatus()`       | PATCH method, name from suffix               |
+| `sub*`        | Immediate subrouting | `subDashboard(group)` | Receives Group for inline nesting            |
+| `route*`      | Route customization  | `routeFaq(route)`     | Receives Route for OO customization          |
 
 ### RESTful Verb Convention
 
@@ -232,16 +228,16 @@ The verb prefix determines the **HTTP method only**. The suffix is used for the 
 ```typescript
 @Path('/users')
 class UserController extends Controller {
-  get() { }                          // GET  /users
-  post() { }                         // POST /users
-  put() { }                          // PUT  /users
-  delete() { }                       // DELETE /users
+  get() {} // GET  /users
+  post() {} // POST /users
+  put() {} // PUT  /users
+  delete() {} // DELETE /users
 
   @Path('/profile')
-  getProfile() { }                   // GET  /users/profile
+  getProfile() {} // GET  /users/profile
 
   @Path('/settings')
-  putSettings() { }                  // PUT  /users/settings
+  putSettings() {} // PUT  /users/settings
 }
 ```
 
@@ -254,10 +250,10 @@ For routes that don't follow the naming convention, use explicit decorators:
 ```typescript
 class SearchController extends Controller {
   @Get('/search')
-  getSearch() { }        // GET /search
+  getSearch() {} // GET /search
 
   @Post('/bulk-delete')
-  postBulkDelete() { }   // POST /bulk-delete
+  postBulkDelete() {} // POST /bulk-delete
 }
 ```
 
@@ -272,11 +268,7 @@ Define middleware as methods on the controller using the `middleware*` prefix. M
 ```typescript
 @Path('/admin')
 class AdminController extends Controller {
-  middlewareAuth(
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction,
-  ) {
+  middlewareAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
     if (!req.session.user) {
       res.redirect('/login');
       return;
@@ -284,11 +276,7 @@ class AdminController extends Controller {
     next();
   }
 
-  middlewareRateLimit(
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction,
-  ) {
+  middlewareRateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
     // rate limiting logic
     next();
   }
@@ -317,7 +305,9 @@ function auth(req: express.Request, res: express.Response, next: express.NextFun
 @Path('/api')
 class ApiController extends Controller {
   @Get('/users')
-  getUsers() { return []; }  // auth runs before this
+  getUsers() {
+    return [];
+  } // auth runs before this
 }
 ```
 
@@ -327,11 +317,15 @@ Method-level `@Middleware` runs for one route only:
 @Path('/api')
 class ApiController extends Controller {
   @Get('/public')
-  getPublic() { return []; }  // no auth
+  getPublic() {
+    return [];
+  } // no auth
 
   @Get('/admin')
   @Middleware(auth)
-  getAdmin() { return []; }   // auth runs before this only
+  getAdmin() {
+    return [];
+  } // auth runs before this only
 }
 ```
 
@@ -495,7 +489,7 @@ class AdminController extends Controller {
   }
 
   groupSettings() {
-    return SettingsController;  // inherits middlewareAuth
+    return SettingsController; // inherits middlewareAuth
   }
 }
 
@@ -504,7 +498,9 @@ class SettingsController extends Controller {
   // middlewareAuth from parent runs before all routes here
 
   @Get('/')
-  getIndex() { return {}; }
+  getIndex() {
+    return {};
+  }
 }
 ```
 
@@ -527,14 +523,18 @@ class RootController extends Controller {
 @Path('/web')
 class WebController extends Controller {
   @Get('/')
-  getIndex() { return {}; }
+  getIndex() {
+    return {};
+  }
   // Route: GET /web/
 }
 
 @Path('/apis')
 class ApisController extends Controller {
   @Get('/hello')
-  getHello() { return {}; }
+  getHello() {
+    return {};
+  }
   // Route: GET /apis/hello
 }
 ```
@@ -575,8 +575,8 @@ Both modes ensure `req.params` has ALL params from ALL path segments:
 // @Get('/:screenId') on handler
 // GET /dev123/screens/screen456
 
-req.params.deviceId  // "dev123"
-req.params.screenId  // "screen456"
+req.params.deviceId; // "dev123"
+req.params.screenId; // "screen456"
 ```
 
 **Class-level `@Path`**: Set the base path for all routes in a controller. The path is stored as `group.basePath` and applied as a prefix during registration.
@@ -585,10 +585,10 @@ req.params.screenId  // "screen456"
 @Path('/api/v1/users')
 class UserController extends Controller {
   @Get('/:id')
-  getUser() { }    // Route: GET /api/v1/users/:id
+  getUser() {} // Route: GET /api/v1/users/:id
 
   @Post('')
-  createUser() { } // Route: POST /api/v1/users
+  createUser() {} // Route: POST /api/v1/users
 }
 ```
 
@@ -599,11 +599,7 @@ Decorator methods wrap the response for all routes in the controller. They recei
 ```typescript
 @Path('/api')
 class ApiController extends Controller {
-  decorateTransform(
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction,
-  ) {
+  decorateTransform(req: express.Request, res: express.Response, next: express.NextFunction) {
     // Modify response before sending
     next();
   }
@@ -656,14 +652,14 @@ getUsers(limit: number) { return { limit }; }            // req.query.limit
 
 When using `namedParamAutoInject: true`, these names are reserved:
 
-| Name | Resolves to |
-|---|---|
-| `req`, `request` | Express Request |
-| `res`, `response` | Express Response |
-| `next` | Express NextFunction |
-| `ctx`, `context` | Per-request Context |
-| `body` | `req.body` |
-| `query` | `req.query` |
+| Name              | Resolves to          |
+| ----------------- | -------------------- |
+| `req`, `request`  | Express Request      |
+| `res`, `response` | Express Response     |
+| `next`            | Express NextFunction |
+| `ctx`, `context`  | Per-request Context  |
+| `body`            | `req.body`           |
+| `query`           | `req.query`          |
 
 **Route params take priority**: if your route has `/:context`, the parameter `context` resolves from `req.params.context`, not the Context object. Use `@Ctx()` or `@Inject(Context)` for explicit injection when there's a naming conflict.
 
@@ -700,6 +696,7 @@ getUser(db: Database, cache: Cache, @Param('id') id: string) {
 **Resolution priority**: `@Param`/`@Body`/etc decorators > named auto-inject > type-based DI > `undefined`
 
 **Requirements**:
+
 - `emitDecoratorMetadata: true` and `experimentalDecorators: true` in tsconfig
 - Must compile with `tsc` (not ts-jest's isolated mode) for `design:paramtypes` metadata to be emitted
 - Primitives (`String`, `Number`, `Boolean`) are never resolved from the Container
@@ -712,20 +709,23 @@ Each request gets its own `Context` instance — a per-request Container that in
 import { Controller, Path, Get, Ctx, Context } from '@rosengate/exedra-ts';
 
 class User {
-  constructor(public id: number, public name: string) {}
+  constructor(
+    public id: number,
+    public name: string,
+  ) {}
 }
 
 class ProfileController extends Controller {
   // Middleware: 4th param is the per-request Context
   middlewareAuth(req: any, res: any, next: any, ctx: Context) {
     const user = verifyToken(req.headers.authorization);
-    ctx.service(User, user);     // request-scoped — not shared with other requests
+    ctx.service(User, user); // request-scoped — not shared with other requests
     next();
   }
 
   @Get('')
   getProfile(@Ctx() ctx: Context) {
-    const user = ctx.resolve(User);  // resolved from this request's Context
+    const user = ctx.resolve(User); // resolved from this request's Context
     return { id: user.id, name: user.name };
   }
 }
@@ -737,6 +737,7 @@ GET /profile (token: bob)    → { id: 2, name: 'Bob' }   // isolated
 ```
 
 **How it works**:
+
 - A `Context` is created per-request, stored on `req._exedra_context`
 - Middleware receives it as the **4th parameter**: `fn(req, res, next, ctx)`
 - Handlers inject via `@Inject(token)` decorator, `@Ctx()` decorator, named auto-inject, or type-based DI
@@ -750,7 +751,10 @@ GET /profile (token: bob)    → { id: 2, name: 'Bob' }   // isolated
 import { Controller, Get, Param, Inject, Ctx, Context } from '@rosengate/exedra-ts';
 
 class User {
-  constructor(public id: number, public name: string) {}
+  constructor(
+    public id: number,
+    public name: string,
+  ) {}
 }
 
 class ProfileController extends Controller {
@@ -797,71 +801,307 @@ The "Target" column shows where each decorator can be applied. The "Wired" colum
 
 ### Route & Path
 
-| Attribute | Target | Wired | Repeatable | Description |
-|---|---|---|---|---|
-| `@Path(path)` | class + method | class + method | No | Sets the route path |
-| `@Name(name)` | class + method | class (replaces default) + method | No | Class-level replaces the default name from `group*` method. Method-level sets the route name. Use `route.fullName` for the full dotted path, `route.name` for local name only. |
-| `@Method(verb)` | class + method | class (default) + method | No | Class-level sets default HTTP method for all routes. Method-level overrides. |
-| `@Requestable(bool)` | class + method | class (applies to all) + method (overrides) | No | Class-level `false` disables all routes. Method-level `true` overrides class-level. |
-| `@Tag(name)` | method | method only | No | Tags the route |
-| `@Config(key, val)` | class + method | class + method | Yes | Class-level config merges into all routes. Method-level overrides same keys. |
+| Attribute            | Target         | Wired                                       | Repeatable | Description                                                                                                                                                                    |
+| -------------------- | -------------- | ------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@Path(path)`        | class + method | class + method                              | No         | Sets the route path                                                                                                                                                            |
+| `@Name(name)`        | class + method | class (replaces default) + method           | No         | Class-level replaces the default name from `group*` method. Method-level sets the route name. Use `route.fullName` for the full dotted path, `route.name` for local name only. |
+| `@Method(verb)`      | class + method | class (default) + method                    | No         | Class-level sets default HTTP method for all routes. Method-level overrides.                                                                                                   |
+| `@Requestable(bool)` | class + method | class (applies to all) + method (overrides) | No         | Class-level `false` disables all routes. Method-level `true` overrides class-level.                                                                                            |
+| `@Tag(name)`         | method         | method only                                 | No         | Tags the route                                                                                                                                                                 |
+| `@Config(key, val)`  | class + method | class + method                              | Yes        | Class-level config merges into all routes. Method-level overrides same keys.                                                                                                   |
 
 ### Middleware
 
-| Attribute | Target | Wired | Repeatable | Description |
-|---|---|---|---|---|
-| `@Middleware(fn)` | class + method | class (all routes) + method (one route) | Yes | Accepts a middleware function. Class-level runs for all routes in the controller. Method-level runs for that route only. Runs in order: class `@Middleware` → `middleware*` prefix → method `@Middleware` → handler. |
+| Attribute         | Target         | Wired                                   | Repeatable | Description                                                                                                                                                                                                          |
+| ----------------- | -------------- | --------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@Middleware(fn)` | class + method | class (all routes) + method (one route) | Yes        | Accepts a middleware function. Class-level runs for all routes in the controller. Method-level runs for that route only. Runs in order: class `@Middleware` → `middleware*` prefix → method `@Middleware` → handler. |
 
 ### Decorators (metadata only)
 
-| Attribute | Target | Wired | Repeatable | Description |
-|---|---|---|---|---|
-| `@Decorator(Class)` | class + method | metadata only | Yes | Stores decorator metadata — use `decorate*` prefix methods for execution |
+| Attribute           | Target         | Wired         | Repeatable | Description                                                              |
+| ------------------- | -------------- | ------------- | ---------- | ------------------------------------------------------------------------ |
+| `@Decorator(Class)` | class + method | metadata only | Yes        | Stores decorator metadata — use `decorate*` prefix methods for execution |
 
 ### State, Flags & Series (class-level propagates to all routes)
 
-| Attribute | Target | Wired | Repeatable | Description |
-|---|---|---|---|---|
-| `@State(key, val)` | class + method + param | class + method + param | Yes | Generic key/value state |
-| `@Flag(name)` | class + method + param | class + method + param | Yes | Boolean flags |
-| `@Series(key, val)` | class + method + param | class + method + param | Yes | Repeatable key/value pairs |
+Class-level values propagate to every route as defaults; method-level values override same keys (for `@State`/`@Series`) or append (for `@Flag`). Access at runtime via `Context` methods or parameter decorators.
+
+| Attribute           | Target                 | Wired                  | Repeatable | Description                                                                                 |
+| ------------------- | ---------------------- | ---------------------- | ---------- | ------------------------------------------------------------------------------------------- |
+| `@State(key, val)`  | class + method + param | class + method + param | Yes        | Generic key/value state. Access via `ctx.state(key)` or `@State('key')` param.              |
+| `@Flag(name)`       | class + method + param | class + method + param | Yes        | Boolean flags. Access via `ctx.hasFlag(name)` or `@Flag('name')` param (returns `boolean`). |
+| `@Series(key, val)` | class + method + param | class + method + param | Yes        | Repeatable key/value pairs. Access via `ctx.series(key)` or `@Series('key')` param.         |
 
 ### Validation & Transformer (class-level propagates via state merge)
 
-| Attribute | Target | Wired | Repeatable | Description |
-|---|---|---|---|---|
-| `@Validation(rules)` | class + method | class (indirect) + method | No | Validation rules (stored in route state) |
-| `@Transformer(Class)` | class + method | class (indirect) + method | No | Transformer class (stored in route state) |
-| `@Include(key)` | method (on transformer) | method only | Yes | Registers optional include for transformer |
+| Attribute             | Target                  | Wired                     | Repeatable | Description                                |
+| --------------------- | ----------------------- | ------------------------- | ---------- | ------------------------------------------ |
+| `@Validation(rules)`  | class + method          | class (indirect) + method | No         | Validation rules (stored in route state)   |
+| `@Transformer(Class)` | class + method          | class (indirect) + method | No         | Transformer class (stored in route state)  |
+| `@Include(key)`       | method (on transformer) | method only               | Yes        | Registers optional include for transformer |
 
 ### Catch-All
 
-| Attribute | Target | Wired | Repeatable | Description |
-|---|---|---|---|---|
-| `@FailRoute` | method | method only | No | Group-level catch-all for unmatched routes. **Method-only** — applying to a class throws an error. Works with or without parentheses: `@FailRoute` or `@FailRoute()`. |
+| Attribute    | Target | Wired       | Repeatable | Description                                                                                                                                                           |
+| ------------ | ------ | ----------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@FailRoute` | method | method only | No         | Group-level catch-all for unmatched routes. **Method-only** — applying to a class throws an error. Works with or without parentheses: `@FailRoute` or `@FailRoute()`. |
 
 ### Parameter Injection
 
-| Attribute | Target | Wired | Repeatable | Description |
-|---|---|---|---|---|
-| `@Param(key?)` | parameter | parameter | Yes | Reads from `req.params[key]` |
-| `@Body(key?)` | parameter | parameter | Yes | Reads from `req.body[key]` |
-| `@Query(key?)` | parameter | parameter | Yes | Reads from `req.query[key]` |
-| `@Header(key?)` | parameter | parameter | Yes | Reads from `req.headers[key]` |
-| `@Req()` | parameter | parameter | No | Raw Express Request |
-| `@Res()` | parameter | parameter | No | Raw Express Response |
-| `@Next()` | parameter | parameter | No | Express NextFunction |
-| `@Ctx()` | parameter | parameter | No | Per-request Context (child scope of app Container) |
-| `@Inject(token)` | parameter | parameter | Yes | Explicit injection by class or string token (transpile-safe) |
-| `@State(key?)` | parameter | parameter | Yes | Reads from route state |
-| `@Flag(name?)` | parameter | parameter | Yes | Checks if flag is set |
-| `@Series(key?)` | parameter | parameter | Yes | Reads from route series |
+| Attribute        | Target    | Wired     | Repeatable | Description                                                  |
+| ---------------- | --------- | --------- | ---------- | ------------------------------------------------------------ |
+| `@Param(key?)`   | parameter | parameter | Yes        | Reads from `req.params[key]`                                 |
+| `@Body(key?)`    | parameter | parameter | Yes        | Reads from `req.body[key]`                                   |
+| `@Query(key?)`   | parameter | parameter | Yes        | Reads from `req.query[key]`                                  |
+| `@Header(key?)`  | parameter | parameter | Yes        | Reads from `req.headers[key]`                                |
+| `@Req()`         | parameter | parameter | No         | Raw Express Request                                          |
+| `@Res()`         | parameter | parameter | No         | Raw Express Response                                         |
+| `@Next()`        | parameter | parameter | No         | Express NextFunction                                         |
+| `@Ctx()`         | parameter | parameter | No         | Per-request Context (child scope of app Container)           |
+| `@Inject(token)` | parameter | parameter | Yes        | Explicit injection by class or string token (transpile-safe) |
+| `@State(key?)`   | parameter | parameter | Yes        | Reads from route state                                       |
+| `@Flag(name?)`   | parameter | parameter | Yes        | Checks if flag is set                                        |
+| `@Series(key?)`  | parameter | parameter | Yes        | Reads from route series                                      |
 
 #### Wired vs Metadata-Only
 
 - **Wired**: The decorator's metadata is read at runtime and affects behavior (e.g., `@Path` sets the route URL, `@Middleware(fn)` registers middleware, `@Name` prefixes route names)
 - **Metadata only**: The decorator stores data that can be introspected via `Reflect.getMetadata()`, but the framework doesn't act on it at runtime. Currently only `@Decorator` falls into this category — use `decorate*` prefix methods instead.
 - **Indirect**: The decorator stores data inside route `states`, which are merged from class-level into every route via `handler.ts`
+
+## Routing Meta
+
+> Attach route-level metadata that travels through the controller hierarchy. Class-level sets defaults; method-level overrides per route. Accessible at runtime via Context or parameter decorators.
+
+### Why Routing Meta?
+
+Most frameworks scatter route configuration across middleware, config files, and handler logic. exedra-ts keeps it **on the route itself** — co-located with the handler, visible in the decorator stack, and accessible without parsing request objects.
+
+Use cases:
+
+- **Middleware branching** — middleware adapts behavior based on route flags (e.g., JSON vs HTML response)
+- **Pipeline configuration** — tell transformers, validators, or loggers how to behave per route
+- **Cross-cutting concerns** — auth requirements, rate limits, caching policies — declared, not hardcoded
+
+### @State — Key/Value Metadata
+
+Attach arbitrary key/value data to routes. Class-level values propagate to all routes as defaults; method-level values override the same key.
+
+```typescript
+@Path('/devices')
+@State('resource', 'device') // default for all routes
+@State('cache_ttl', 300) // default TTL: 5 minutes
+class DeviceController extends Controller {
+  @Get('')
+  listDevices() {
+    // inherits resource='device', cache_ttl=300
+  }
+
+  @Get('/:id')
+  @State('cache_ttl', 60) // override: 1 minute for single items
+  getDevice() {
+    // resource='device', cache_ttl=60
+  }
+
+  @Get('/realtime')
+  @State('cache_ttl', 0) // no caching
+  @State('stream', true) // add extra state
+  streamDevices() {
+    // resource='device', cache_ttl=0, stream=true
+  }
+}
+```
+
+**Class-level propagates to all routes** — set defaults once, override where needed. Method-level `@State` calls merge into (or override) the class-level values.
+
+### @Flag — Boolean Flags
+
+Attach named boolean flags. Class-level flags apply to all routes; method-level flags append to that route's flags.
+
+```typescript
+@Path('/apis')
+@Flag('api') // all routes are API routes
+@Flag('json') // all routes return JSON
+class ApiController extends Controller {
+  @Get('/public')
+  getPublic() {
+    // flags: ['api', 'json']
+  }
+
+  @Get('/admin')
+  @Flag('auth') // this route also requires auth
+  @Flag('verbose') // this route gets verbose logging
+  getAdmin() {
+    // flags: ['api', 'json', 'auth', 'verbose']
+  }
+
+  @Get('/health')
+  @Flag('public') // mark as public endpoint
+  healthCheck() {
+    // flags: ['api', 'json', 'public']
+  }
+}
+```
+
+**Flags are additive** — class-level flags appear on every route, method-level flags add to the list.
+
+### @Series — Ordered Collections
+
+Attach named arrays of values. Useful for ordered pipelines (transformer chains, middleware stacks, or processor lists).
+
+```typescript
+@Path('/reports')
+@Series('transformer', 'summary') // default: summary transformer
+class ReportController extends Controller {
+  @Get('')
+  @Series('transformer', 'list') // override: list transformer
+  listReports() {
+    // serieses: { transformer: ['list'] }
+  }
+
+  @Get('/:id')
+  getReport() {
+    // serieses: { transformer: ['summary'] }  (inherited from class)
+  }
+
+  @Get('/:id/pdf')
+  @Series('transformer', 'detail') // override
+  @Series('format', 'pdf') // add new series
+  exportPdf() {
+    // serieses: { transformer: ['detail'], format: ['pdf'] }
+  }
+}
+```
+
+**Series values are arrays** — multiple calls to the same key append to the array. This makes them ideal for ordered pipelines.
+
+### Runtime Access
+
+All three decorators work as **parameter decorators** — inject values directly into your handler:
+
+```typescript
+import { State, Flag, Series } from '@rosengate/exedra-ts';
+
+class DeviceController extends Controller {
+  @Get('/:device/meta')
+  getMeta(
+    @State('resource') resource: string, // "device"
+    @State('cache_ttl') ttl: number, // 300
+    @Flag('ajax') isAjax: boolean, // true or false
+    @Flag('verbose') isVerbose: boolean, // true or false
+    @Series('transformer') transformers: any[], // ['list']
+    @State('stream') isStreaming: boolean, // true or undefined
+  ) {
+    return { resource, ttl, isAjax, isVerbose, transformers, isStreaming };
+  }
+}
+```
+
+Without a key, the decorator injects the entire object:
+
+```typescript
+@Get('/debug')
+getDebug(@State() allStates: Record<string, any>, @Flag() allFlags: string[]) {
+  return { states: allStates, flags: allFlags };
+}
+```
+
+**Via Context** — middleware receives the per-request Context as the 4th parameter:
+
+```typescript
+middlewareAdaptResponse(req: express.Request, res: express.Response, next: express.NextFunction, ctx: Context) {
+  if (ctx.hasFlag('ajax')) {
+    // AJAX request — return JSON errors
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  // Regular request — redirect to login
+  res.redirect('/login');
+}
+```
+
+**Context API**:
+
+| Method                    | Returns                               |
+| ------------------------- | ------------------------------------- |
+| `ctx.state(key)`          | Value for that key, or `undefined`    |
+| `ctx.state(key, default)` | Value for that key, or `default`      |
+| `ctx.hasState(key)`       | `true` if key exists                  |
+| `ctx.hasFlag(name)`       | `true` if flag is in the flags array  |
+| `ctx.flags()`             | Copy of the entire flags array        |
+| `ctx.series(key)`         | Array of values for that key, or `[]` |
+| `ctx.hasSeries(key)`      | `true` if key exists in serieses map  |
+
+### Practical Patterns
+
+**Middleware branching on flags** — a single middleware adapts to every route:
+
+```typescript
+class ApiController extends Controller {
+  middlewareFormat(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+    ctx: Context,
+  ) {
+    if (ctx.hasFlag('json')) {
+      res.setHeader('Content-Type', 'application/json');
+    }
+    if (ctx.hasFlag('verbose')) {
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    }
+    next();
+  }
+
+  @Get('/data')
+  @Flag('json')
+  getData() {
+    return { items: [] };
+  }
+
+  @Get('/page')
+  getPage() {
+    return '<h1>Home</h1>';
+  }
+}
+```
+
+**Class defaults with method overrides** — set auth requirements at the class level, relax them per route:
+
+```typescript
+@Path('/admin')
+@State('auth', true) // all routes require auth
+@Flag('admin') // all routes are admin-only
+class AdminController extends Controller {
+  @Get('/dashboard')
+  getDashboard() {
+    // auth=true, admin=true
+  }
+
+  @Get('/status')
+  @State('auth', false) // public health check
+  @Flag('public') // mark as public
+  getStatus() {
+    // auth=false, admin=true, public=true
+  }
+}
+```
+
+**Pipeline configuration** — use Series for ordered processing chains:
+
+```typescript
+@Path('/pipeline')
+class PipelineController extends Controller {
+  @Post('/process')
+  @Series('step', 'validate')
+  @Series('step', 'transform')
+  @Series('step', 'persist')
+  process() {
+    // step: ['validate', 'transform', 'persist']
+    // middleware can read ctx.series('step') and execute in order
+  }
+}
+```
 
 ## Validation
 
@@ -878,7 +1118,14 @@ npm i zod
 
 ```typescript
 import { z } from 'zod';
-import { createValidationMiddleware, Validation, Controller, Path, Get, Post } from '@rosengate/exedra-ts';
+import {
+  createValidationMiddleware,
+  Validation,
+  Controller,
+  Path,
+  Get,
+  Post,
+} from '@rosengate/exedra-ts';
 
 // Validator inspects rules and validates each field against Zod schemas
 const validate = async (data: any, rules: Record<string, any>) => {
@@ -1020,12 +1267,12 @@ container.factory(Cache, () => new RedisCache());
 container.func('hash', (password: string) => bcrypt.hash(password));
 
 // Resolution
-container.resolve('db');           // the singleton
-container.resolve(Database);       // the Database singleton
-container.resolve('mailer');       // new Mailer instance
-container.resolve('hash');         // the function
-container.canResolve('db');        // true
-container.canResolve(Database);    // true
+container.resolve('db'); // the singleton
+container.resolve(Database); // the Database singleton
+container.resolve('mailer'); // new Mailer instance
+container.resolve('hash'); // the function
+container.canResolve('db'); // true
+container.canResolve(Database); // true
 ```
 
 Pass the container to `createExedra` to enable type-based injection in handlers (see [Type-Based Injection](#type-based-injection-via-container)):
@@ -1038,29 +1285,29 @@ These are the internal routing objects, available for advanced use:
 import { Route, Group, Finding, CallStack, Call, Factory } from '@rosengate/exedra-ts';
 ```
 
-| Class | Description |
-|---|---|
-| `Route` | Single route definition. `name` (relative), `fullName` (dotted path), `path` (relative), `fullPath` (absolute URL), `controllerPath` (file path to controller) |
-| `Group` | Wraps Express Router. `listRoutes()` returns `RouteInfo[]` with all the above fields |
-| `Finding` | A resolved route match, builds callstack |
-| `CallStack` | Ordered pipeline of middleware + handler calls |
-| `Call` | A single callable in the pipeline |
-| `Factory` | Creates groups, routes, and findings |
+| Class       | Description                                                                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Route`     | Single route definition. `name` (relative), `fullName` (dotted path), `path` (relative), `fullPath` (absolute URL), `controllerPath` (file path to controller) |
+| `Group`     | Wraps Express Router. `listRoutes()` returns `RouteInfo[]` with all the above fields                                                                           |
+| `Finding`   | A resolved route match, builds callstack                                                                                                                       |
+| `CallStack` | Ordered pipeline of middleware + handler calls                                                                                                                 |
+| `Call`      | A single callable in the pipeline                                                                                                                              |
+| `Factory`   | Creates groups, routes, and findings                                                                                                                           |
 
 ### listRoutes() Fields
 
 `group.listRoutes()` returns an array of `RouteInfo`:
 
-| Field | Example | Description |
-|---|---|---|
-| `method` | `'GET'` | HTTP method |
-| `path` | `'/:id'` | Route's own path segment (relative) |
-| `name` | `'get-user'` | Route's own name (relative) |
-| `fullPath` | `'/admin/users/:id'` | Absolute URL path |
-| `fullName` | `'admin.users.get-user'` | Full dotted name with `@Name` prefixes |
+| Field            | Example                                | Description                                                                        |
+| ---------------- | -------------------------------------- | ---------------------------------------------------------------------------------- |
+| `method`         | `'GET'`                                | HTTP method                                                                        |
+| `path`           | `'/:id'`                               | Route's own path segment (relative)                                                |
+| `name`           | `'get-user'`                           | Route's own name (relative)                                                        |
+| `fullPath`       | `'/admin/users/:id'`                   | Absolute URL path                                                                  |
+| `fullName`       | `'admin.users.get-user'`               | Full dotted name with `@Name` prefixes                                             |
 | `controllerPath` | `'src/controllers/UsersController.ts'` | File path to the controller source (falls back to class name in test environments) |
-| `controller` | `'UsersController'` | Controller class name |
-| `action` | `'getUser'` | Method name |
+| `controller`     | `'UsersController'`                    | Controller class name                                                              |
+| `action`         | `'getUser'`                            | Method name                                                                        |
 
 ## Configuration
 
@@ -1068,23 +1315,23 @@ import { Route, Group, Finding, CallStack, Call, Factory } from '@rosengate/exed
 
 ```typescript
 createExedra(app, {
-  controller: RootController,      // Required — root controller class
-  namedParamAutoInject: false,     // Auto-inject handler params by name from req.params/req.query
-  useFlatRouting: false,           // false = Express sub-routers (default), true = flat direct registration
-  middlewares: [],                  // Global middleware functions
-  decorators: [],                  // Global response decorators
-  container: undefined,            // IoC Container for type-based method injection
+  controller: RootController, // Required — root controller class
+  namedParamAutoInject: false, // Auto-inject handler params by name from req.params/req.query
+  useFlatRouting: false, // false = Express sub-routers (default), true = flat direct registration
+  middlewares: [], // Global middleware functions
+  decorators: [], // Global response decorators
+  container: undefined, // IoC Container for type-based method injection
 });
 ```
 
-| Option | Default | Description |
-|---|---|---|
-| `controller` | (required) | Root controller class that defines the routing tree |
-| `namedParamAutoInject` | `false` | When `true`, handler method params are resolved by name from `req.params` and `req.query` |
-| `useFlatRouting` | `false` | When `false`, uses Express `router.use()` with `mergeParams: true` (default, recommended). When `true`, registers all routes directly on parent router |
-| `middlewares` | `[]` | Global middleware applied to all routes |
-| `decorators` | `[]` | Global response decorators applied to all routes |
-| `container` | `undefined` | IoC Container for type-based method injection. When provided, handler params are resolved by their TypeScript type from the container |
+| Option                 | Default     | Description                                                                                                                                            |
+| ---------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `controller`           | (required)  | Root controller class that defines the routing tree                                                                                                    |
+| `namedParamAutoInject` | `false`     | When `true`, handler method params are resolved by name from `req.params` and `req.query`                                                              |
+| `useFlatRouting`       | `false`     | When `false`, uses Express `router.use()` with `mergeParams: true` (default, recommended). When `true`, registers all routes directly on parent router |
+| `middlewares`          | `[]`        | Global middleware applied to all routes                                                                                                                |
+| `decorators`           | `[]`        | Global response decorators applied to all routes                                                                                                       |
+| `container`            | `undefined` | IoC Container for type-based method injection. When provided, handler params are resolved by their TypeScript type from the container                  |
 
 ## TypeScript Configuration
 
