@@ -18,6 +18,7 @@
     "example": "ts-node --project tsconfig.example.json examples/app.ts",
     "example:watch": "ts-node-dev --respawn --project tsconfig.example.json examples/app.ts",
     "example:routes": "ts-node --project tsconfig.example.json examples/app.ts --routes",
+    "examples:document-structure": "ts-node --project tsconfig.example.json examples/generate-readme.ts",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
