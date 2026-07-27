@@ -33,24 +33,6 @@ export default class ProfileController extends Controller {
     return await next();
   }
 
-  async middlewareCatch(req: express.Request, res: express.Response, next: express.NextFunction) {
-    try {
-      await next();
-    } catch (err: any) {
-      throw err;
-    }
-  }
-
-  // middlewareNoCalling() {
-  //   throw new Error('Should not be called');
-  // }
-
-  async middlewareProfile(req: express.Request, _res: express.Response, next: express.NextFunction) {
-    return {
-      data: await next()
-    }
-  }
-
   @Path('/:id')
   @Validation({
     name: 'required',

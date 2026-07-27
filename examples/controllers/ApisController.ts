@@ -8,55 +8,10 @@ import ProfileController from "./apis/ProfileController";
 
 @Path('/apis')
 export default class ApisController extends Controller {
-  // async middlewareZero(req: any, res: any, next: any) {
-  //   try {
-  //     await next();
-  //   } catch (e: any) {
-  //     res.status(500).json({ error: e.message });
-  //   }
-  // }
-  //
-  // async middlewareOne(req: any, res: any, next: any) {
-  //   try {
-  //     await next();
-  //   } catch (e: any) {
-  //     throw new Error(`Middleware One Error and ${e.message}`);
-  //   }
-  // }
-  //
-  // async middlewareTwo(req: any, res: any, next: any) {
-  //   try {
-  //     await next();
-  //   } catch (e: any) {
-  //     throw new Error(`Middleware Two Error and ${e.message}`);
-  //   }
-  // }
-
-
-  // middlewareFinal() {
-  //   return async (req: any, res: any, next: any) => {
-  //     try {
-  //       await next();
-  //
-  //       res.status(200).json({
-  //         ok: 'la'
-  //       })
-  //     } catch (e: any) {
-  //       res.status(500).json({ error: e.message });
-  //     }
-  //   }
-  // }
-  //
-  async middlewareThree(req: any, res: any, next: any) {
-    try {
-      await next();
-    } catch (e: any) {
-      return res.status(500).json({ zerror: e.message });
-
-      return {
-        ok: 'tak?'
-      }
-    }
+  async middlewareDataWrapping(req: any, res: any, next: any) {
+    return {
+      data: await next()
+    };
   }
 
   groupUsers() {
