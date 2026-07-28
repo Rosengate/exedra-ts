@@ -194,8 +194,92 @@ app.<span class="text-cyan-300">listen</span>(<span class="text-amber-300">3000<
 </html>`;
 }
 
+function sseDemoPage(): string {
+  return /* html */ `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSE Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    textarea { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 antialiased min-h-screen flex items-center justify-center">
+
+  <div class="w-full max-w-xl p-8">
+    <h1 class="text-2xl font-bold mb-6 text-center">SSE Demo</h1>
+
+    <div class="mb-4">
+      <label for="api-url" class="block text-sm text-gray-400 mb-1">API URL</label>
+      <input id="api-url" type="text" value="/apis/sse/streaming" placeholder="http://localhost:3545/apis/sse/streaming"
+        class="w-full rounded-lg bg-gray-900 border border-gray-800 p-3 text-sm text-gray-200 focus:outline-none focus:border-indigo-500" />
+    </div>
+
+    <div class="flex gap-3 mb-4">
+      <button onclick="startStream()"
+        class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-medium transition-colors">
+        Stream
+      </button>
+    </div>
+
+    <div id="status" class="text-sm text-gray-400 mb-3">Disconnected</div>
+
+    <textarea id="output" readonly rows="16"
+      class="w-full rounded-lg bg-gray-900 border border-gray-800 p-4 text-sm text-gray-300 resize-none focus:outline-none focus:border-indigo-500">
+</textarea>
+  </div>
+
+  <script>
+    const decoder = new TextDecoder();
+
+    function appendLine(text) {
+      const ta = document.getElementById('output');
+      ta.value += text + '\\n';
+      ta.scrollTop = ta.scrollHeight;
+    }
+
+    function setStatus(msg) {
+      document.getElementById('status').textContent = msg;
+    }
+
+    async function startStream() {
+      const url = document.getElementById('api-url').value.trim();
+      const output = document.getElementById('output');
+      output.value = '';
+      setStatus('Streaming...');
+
+      try {
+        const res = await fetch(url, { method: 'POST' });
+        const reader = res.body.getReader();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          appendLine(decoder.decode(value, { stream: true }));
+        }
+
+        setStatus('Finished');
+      } catch (err) {
+        setStatus('Error: ' + err.message);
+        appendLine('[error — ' + err.message + ']');
+      }
+    }
+  </script>
+
+</body>
+</html>`;
+}
+
 @Path('/')
 export default class WebController extends Controller {
+  @Path('/sse')
+  getSse(req: Request, res: Response) {
+    res.send(sseDemoPage());
+  }
+
   @Get('')
   landing(req: Request, res: Response) {
     res.send(landingPage());

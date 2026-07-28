@@ -149,20 +149,20 @@ The singleton registry lives on `globalThis` to survive ts-node module duplicati
 
 Every method in a controller MUST have a prefix OR a decorator. Methods without either are silently skipped.
 
-| Prefix | Role | Example | Behavior |
-|---|---|---|---|
-| `middleware*` | Group middleware | `middlewareAuth()` | Runs for ALL routes in the controller. Receives `(req, res, next)`. |
-| `decorate*` | Decorator | `decorateTransform()` | Wraps the response for all routes. |
-| `setup*` | Direct group setup | `setupRoutes(group)` | Receives Group for manual route registration. Case-insensitive. |
-| `execute*` | Named route | `executeIndex()` | Route with name derived from suffix (`index`). |
-| `group*` | Deferred subrouting | `groupUsers()` | Returns a child controller class. |
-| `get*` | GET route | `getProducts()` | GET method, name from suffix. |
-| `post*` | POST route | `postUser()` | POST method, name from suffix. |
-| `put*` | PUT route | `putUser()` | PUT method, name from suffix. |
-| `delete*` | DELETE route | `deleteUser()` | DELETE method, name from suffix. |
-| `patch*` | PATCH route | `patchStatus()` | PATCH method, name from suffix. |
-| `sub*` | Immediate subrouting | `subDashboard(group)` | Receives Group for inline nesting. |
-| `route*` | Route customization | `routeFaq(route)` | Receives Route for OO customization. |
+| Prefix        | Role                 | Example               | Behavior                                                            |
+| ------------- | -------------------- | --------------------- | ------------------------------------------------------------------- |
+| `middleware*` | Group middleware     | `middlewareAuth()`    | Runs for ALL routes in the controller. Receives `(req, res, next)`. |
+| `decorate*`   | Decorator            | `decorateTransform()` | Wraps the response for all routes.                                  |
+| `setup*`      | Direct group setup   | `setupRoutes(group)`  | Receives Group for manual route registration. Case-insensitive.     |
+| `execute*`    | Named route          | `executeIndex()`      | Route with name derived from suffix (`index`).                      |
+| `group*`      | Deferred subrouting  | `groupUsers()`        | Returns a child controller class.                                   |
+| `get*`        | GET route            | `getProducts()`       | GET method, name from suffix.                                       |
+| `post*`       | POST route           | `postUser()`          | POST method, name from suffix.                                      |
+| `put*`        | PUT route            | `putUser()`           | PUT method, name from suffix.                                       |
+| `delete*`     | DELETE route         | `deleteUser()`        | DELETE method, name from suffix.                                    |
+| `patch*`      | PATCH route          | `patchStatus()`       | PATCH method, name from suffix.                                     |
+| `sub*`        | Immediate subrouting | `subDashboard(group)` | Receives Group for inline nesting.                                  |
+| `route*`      | Route customization  | `routeFaq(route)`     | Receives Route for OO customization.                                |
 
 **RESTful verb-only**: `get()` → GET on group base path. Verb+suffix (`getUsers()`) → suffix is route name only, NOT path. Use `@Path` for path.
 
@@ -173,14 +173,13 @@ Every method in a controller MUST have a prefix OR a decorator. Methods without 
 Decorators set properties on routes. They can be applied at class level (base path) or method level (route-specific).
 
 ```typescript
-@Path('/users')                    // class-level: base path
-@Tag('api')                        // class-level: tags all routes
-
+@Path('/users') // class-level: base path
+@Tag('api') // class-level: tags all routes
 class UsersController extends Controller {
-  @Get('/:id')                     // method-level: HTTP verb + path
-  @Name('users.show')              // method-level: route name
-  @Validation({ id: 'required' })  // method-level: validation rules
-  @Transformer(UserTransformer)    // method-level: response transformer
+  @Get('/:id') // method-level: HTTP verb + path
+  @Name('users.show') // method-level: route name
+  @Validation({ id: 'required' }) // method-level: validation rules
+  @Transformer(UserTransformer) // method-level: response transformer
   getUser(id: string) {
     return {};
   }
@@ -194,11 +193,11 @@ Subrouting nests controllers under a parent path.
 ```typescript
 class RootController extends Controller {
   groupUsers() {
-    return UsersController;  // UsersController's @Path is appended to parent
+    return UsersController; // UsersController's @Path is appended to parent
   }
 
   groupAdmin() {
-    return AdminController;  // AdminController's @Path is appended to parent
+    return AdminController; // AdminController's @Path is appended to parent
   }
 }
 ```
@@ -212,6 +211,7 @@ The handler recursively resolves child controllers. There are two routing modes 
 Both modes ensure `req.params` has ALL params from ALL path segments (`:deviceId`, `:screenId`, etc.).
 
 **Class-level `@Path`** works in two contexts:
+
 - **Root controller**: Stored as `group.basePath`, applied as a prefix to all routes. So `@Path('/devices')` at class level means all routes in that controller are under `/devices/*`.
 - **Child controller** (returned from `group*`): The class-level `@Path` is merged into the parent route's properties by the handler. So `@Path('/users')` on a child controller means routes are at `{parent}/users/*`.
 
@@ -222,6 +222,7 @@ Both modes ensure `req.params` has ALL params from ALL path segments (`:deviceId
 Two approaches, layered:
 
 **Decorators** (always active, no config needed):
+
 ```typescript
 import { Param, Body, Query, Header, Req } from '@rosengate/exedra-ts';
 
@@ -233,6 +234,7 @@ getRaw(@Req() req: any) { return req.ip; }
 ```
 
 **Named auto-injection** (opt-in via `namedParamAutoInject: true`):
+
 ```typescript
 createExedra(app, { controller: RootController, namedParamAutoInject: true });
 
@@ -245,6 +247,7 @@ handler(req: any) { return req.ip; }                     // Express Request
 Reserved names: `req`/`request` (Request), `res`/`response` (Response), `next` (NextFunction), `ctx`/`context` (Context), `body` (req.body), `query` (req.query). Route params take priority over reserved names — use `@Ctx()` or `@Inject()` for explicit injection when there's a naming conflict.
 
 **Routing modes** (controlled by `useFlatRouting`):
+
 ```typescript
 // Default — Express sub-routers with mergeParams
 createExedra(app, { controller: RootController });
@@ -322,24 +325,24 @@ module.exports = {
 
 ### What is tested
 
-| Suite | Coverage |
-|---|---|
-| `kebab-case.test.ts` | camelCase → kebab-case conversion |
-| `controller.test.ts` | Singleton pattern (globalThis registry) |
-| `decorators.test.ts` | @Get/@Post/@Put/@Delete/@Patch store correct metadata |
-| `handler.test.ts` | All 8 prefix parsers (middleware, decorate, setup, execute, group, restful, sub, route) |
-| `param-injection.test.ts` | getParamNames utility + all 7 parameter decorators |
-| `routing-modes.test.ts` | Express vs flat mode: nested params, middleware, mergeParams |
-| `attributes.test.ts` | All 14 attribute decorators: metadata storage, class/method level, merging |
-| `container.test.ts` | Container IoC: service, factory, func, resolve, make, create, canResolve, tokenResolve |
-| `context.test.ts` | Context class: param, state, flag, series, json, send, redirect, status, Container extension |
-| `transformer-include.test.ts` | @Transformer + @Include: transform applied, single/multiple/empty/unknown includes |
-| `middleware-order.test.ts` | Middleware execution order, request modification, short-circuit, @Requestable, @FailRoute |
-| `named-param-inject.test.ts` | namedParamAutoInject: route params, query params, req object, decorator override |
-| `example-app.test.ts` | Full app integration: Root, Users CRUD+auth, Posts CRUD+auth, Health, Admin, Devices |
-| `di-injection.test.ts` | Wireman resolveTypes, Container class keys, type-based DI integration |
-| `request-context.test.ts` | Per-request Context: middleware registration, child scope, isolation, @Ctx, named auto-inject |
-| `di-injection.test.ts` | Wireman resolveTypes, Container class keys, type-based DI integration |
+| Suite                         | Coverage                                                                                      |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| `kebab-case.test.ts`          | camelCase → kebab-case conversion                                                             |
+| `controller.test.ts`          | Singleton pattern (globalThis registry)                                                       |
+| `decorators.test.ts`          | @Get/@Post/@Put/@Delete/@Patch store correct metadata                                         |
+| `handler.test.ts`             | All 8 prefix parsers (middleware, decorate, setup, execute, group, restful, sub, route)       |
+| `param-injection.test.ts`     | getParamNames utility + all 7 parameter decorators                                            |
+| `routing-modes.test.ts`       | Express vs flat mode: nested params, middleware, mergeParams                                  |
+| `attributes.test.ts`          | All 14 attribute decorators: metadata storage, class/method level, merging                    |
+| `container.test.ts`           | Container IoC: service, factory, func, resolve, make, create, canResolve, tokenResolve        |
+| `context.test.ts`             | Context class: param, state, flag, series, json, send, redirect, status, Container extension  |
+| `transformer-include.test.ts` | @Transformer + @Include: transform applied, single/multiple/empty/unknown includes            |
+| `middleware-order.test.ts`    | Middleware execution order, request modification, short-circuit, @Requestable, @FailRoute     |
+| `named-param-inject.test.ts`  | namedParamAutoInject: route params, query params, req object, decorator override              |
+| `example-app.test.ts`         | Full app integration: Root, Users CRUD+auth, Posts CRUD+auth, Health, Admin, Devices          |
+| `di-injection.test.ts`        | Wireman resolveTypes, Container class keys, type-based DI integration                         |
+| `request-context.test.ts`     | Per-request Context: middleware registration, child scope, isolation, @Ctx, named auto-inject |
+| `di-injection.test.ts`        | Wireman resolveTypes, Container class keys, type-based DI integration                         |
 
 ### What is NOT tested (yet)
 
@@ -376,7 +379,7 @@ module.exports = {
 
 4. **`buildHandlers` stores return values on `req._exedra_result`**: The execute handler stores its return value on `req._exedra_result` and calls `next()`. The TransformerMiddleware (if `@Transformer` present) or ResponseSender (if not) reads from `req._exedra_result` and calls `res.json()`. The handler should never call `res.json()` directly.
 
-5. **`@Middleware` attribute stores metadata but middleware* methods are what actually work**: The `@Middleware(Class)` attribute stores a string/class reference in metadata. The `middleware*` prefix methods are what get registered as Express middleware via `group.addMiddleware()`. The attribute-based middleware pipeline (`@Middleware` + middleware array in route properties) is wired through `buildHandlers` which reads `routeProps.middleware` entries.
+5. _*`@Middleware` attribute stores metadata but middleware* methods are what actually work_*: The `@Middleware(Class)` attribute stores a string/class reference in metadata. The `middleware*` prefix methods are what get registered as Express middleware via `group.addMiddleware()`. The attribute-based middleware pipeline (`@Middleware` + middleware array in route properties) is wired through `buildHandlers` which reads `routeProps.middleware` entries.
 
 6. **Route `getPath()` returns absolute path, `registerOnRouter` uses relative**: `route.path` is relative to the group. `route.getPath()` walks the parent chain for the full path. `registerOnRouter` uses `route.path` directly because Express Router mounting handles the prefix.
 
@@ -388,18 +391,20 @@ module.exports = {
 
 10. **`useFlatRouting` config**: When `false` (default), Express `router.use({ mergeParams: true })` handles param merging. When `true`, flat direct registration is used. Both ensure all params are available, but Express mode provides proper sub-router isolation.
 
+11. **LSP decorator errors are false positives**: The TypeScript LSP often reports "Unable to resolve signature of method decorator" and "Decorators are not valid here" errors on test files and controllers that use legacy decorators (`experimentalDecorators: true`). These are LSP misconfigurations — `jest` + `ts-jest` compiles and runs them correctly. Always verify with `npm test` before assuming an error is real.
+
 ## 9. PHP Origin Reference
 
-| PHP Concept | TypeScript Equivalent |
-|---|---|
-| PHPDoc annotations (`@path`, `@method`) | TypeScript decorators (`@Path()`, `@Get()`) |
-| PHP 8 Attributes (`#[Path('/')]`) | TypeScript decorators (same syntax) |
-| `ReflectionClass` / `ReflectionMethod` | `Reflect.getMetadata()` + `Function.toString()` |
-| `Controller::instance()` (singleton) | `Controller.instance()` (globalThis registry) |
-| Method prefix conventions | Same prefix conventions, detected by handler |
-| `Wireman` (DI resolver) | `wireman.ts` + `emitDecoratorMetadata` |
-| `Container` (3-registry: service/callable/factory) | `container.ts` |
-| `Group` / `Route` / `Finding` / `CallStack` | Direct equivalents wrapping Express Router |
+| PHP Concept                                        | TypeScript Equivalent                           |
+| -------------------------------------------------- | ----------------------------------------------- |
+| PHPDoc annotations (`@path`, `@method`)            | TypeScript decorators (`@Path()`, `@Get()`)     |
+| PHP 8 Attributes (`#[Path('/')]`)                  | TypeScript decorators (same syntax)             |
+| `ReflectionClass` / `ReflectionMethod`             | `Reflect.getMetadata()` + `Function.toString()` |
+| `Controller::instance()` (singleton)               | `Controller.instance()` (globalThis registry)   |
+| Method prefix conventions                          | Same prefix conventions, detected by handler    |
+| `Wireman` (DI resolver)                            | `wireman.ts` + `emitDecoratorMetadata`          |
+| `Container` (3-registry: service/callable/factory) | `container.ts`                                  |
+| `Group` / `Route` / `Finding` / `CallStack`        | Direct equivalents wrapping Express Router      |
 
 ### Source files for reference
 

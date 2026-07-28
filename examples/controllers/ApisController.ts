@@ -6,6 +6,7 @@ import HealthController from "./apis/HealthController";
 import DevicesController from "./apis/DevicesController";
 import ProfileController from "./apis/ProfileController";
 import express from "express";
+import SseApiController from "./apis/SseApiController";
 
 @Path('/apis')
 export default class ApisController extends Controller {
@@ -59,5 +60,9 @@ export default class ApisController extends Controller {
 
   groupProfile() {
     return ProfileController;
+  }
+
+  groupStreaming() {
+    return SseApiController;
   }
 }
