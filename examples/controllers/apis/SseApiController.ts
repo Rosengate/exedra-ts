@@ -1,6 +1,10 @@
 import { Controller, Path, Req, Res } from '../../../src';
 import express from 'express';
 
+const wait = (timeout: any) => {
+  return new Promise((resolve) => setTimeout(resolve, timeout));
+}
+
 @Path('/sse')
 export default class SseApiController extends Controller {
   @Path('/streaming')
@@ -20,5 +24,25 @@ export default class SseApiController extends Controller {
         res.end();
       }
     }, 1000);
+  }
+
+  @Path('/async-streaming')
+  async postAsyncStreaming(@Req() req: express.Request, @Res() res: express.Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    let count = 0;
+
+    while (count < 10) {
+      count++
+      res.write(`data: ${JSON.stringify({ count, time: new Date().toISOString() })}\n\n`);
+      if (count >= 10) {
+        res.write('data: [DONE]\n\n');
+        res.end();
+      }
+      await wait(1000);
+    }
   }
 }
