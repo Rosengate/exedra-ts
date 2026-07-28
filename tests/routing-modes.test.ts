@@ -4,10 +4,16 @@ import http from 'http';
 import { Controller, Path, Get, Param } from '../src';
 import { createExedra } from '../src/handler';
 
-function request(app: express.Application, path: string): Promise<{ status: number; body: string }> {
+function request(
+  app: express.Application,
+  path: string,
+): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     let server: http.Server;
-    const timer = setTimeout(() => { server.close(); reject(new Error('timeout')); }, 5000);
+    const timer = setTimeout(() => {
+      server.close();
+      reject(new Error('timeout'));
+    }, 5000);
     server = app.listen(0, () => {
       const addr = server.address() as any;
       http.get(`http://localhost:${addr.port}${path}`, (res) => {
@@ -40,6 +46,91 @@ function makeNestedApp(useFlatRouting: boolean) {
     @Get('/:screenId')
     getScreen(@Param('screenId') screenId: string, @Param('deviceId') deviceId: string) {
       return { screenId, deviceId };
+    }
+  }
+
+  const app = express();
+  createExedra(app, { controller: Root, useFlatRouting });
+  return app;
+}
+
+function makeRootPathApp(useFlatRouting: boolean) {
+  class Root extends Controller {
+    groupTest() {
+      return TestChild;
+    }
+  }
+
+  @Path('/')
+  class TestChild extends Controller {
+    @Get('/test')
+    get() {
+      return { hello: 'world' };
+    }
+  }
+
+  const app = express();
+  createExedra(app, { controller: Root, useFlatRouting });
+  return app;
+}
+
+function makeMultiRootPathApp(useFlatRouting: boolean) {
+  class Root extends Controller {
+    groupAlpha() {
+      return AlphaController;
+    }
+    groupBeta() {
+      return BetaController;
+    }
+  }
+
+  @Path('/')
+  class AlphaController extends Controller {
+    groupGamma() {
+      return GammaController;
+    }
+  }
+
+  @Path('/')
+  class GammaController extends Controller {
+    @Get('/deep')
+    deep() {
+      return { from: 'gamma' };
+    }
+  }
+
+  @Path('/beta')
+  class BetaController extends Controller {
+    @Get('/item')
+    item() {
+      return { from: 'beta' };
+    }
+  }
+
+  const app = express();
+  createExedra(app, { controller: Root, useFlatRouting });
+  return app;
+}
+
+function makeDeepRootPathApp(useFlatRouting: boolean) {
+  class Root extends Controller {
+    groupA() {
+      return AController;
+    }
+  }
+
+  @Path('/')
+  class AController extends Controller {
+    groupB() {
+      return BController;
+    }
+  }
+
+  @Path('/')
+  class BController extends Controller {
+    @Get('/leaf')
+    leaf() {
+      return { from: 'deep' };
     }
   }
 
@@ -133,6 +224,58 @@ describe('Routing modes', () => {
       const res = await request(makeMiddlewareApp(true), '/dev123/screen456');
       expect(res.status).toBe(200);
       expect(JSON.parse(res.body)).toEqual({ deviceId: 'dev123', screenId: 'screen456' });
+    });
+  });
+
+  describe('Child controller with @Path("/")', () => {
+    it('works in Express mode', async () => {
+      const res = await request(makeRootPathApp(false), '/test');
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({ hello: 'world' });
+    });
+
+    it('works in flat mode', async () => {
+      const res = await request(makeRootPathApp(true), '/test');
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({ hello: 'world' });
+    });
+  });
+
+  describe('Multiple groups with @Path("/") siblings', () => {
+    it('works in Express mode', async () => {
+      const app = makeMultiRootPathApp(false);
+      const r1 = await request(app, '/deep');
+      expect(r1.status).toBe(200);
+      expect(JSON.parse(r1.body)).toEqual({ from: 'gamma' });
+
+      const r2 = await request(app, '/beta/item');
+      expect(r2.status).toBe(200);
+      expect(JSON.parse(r2.body)).toEqual({ from: 'beta' });
+    });
+
+    it('works in flat mode', async () => {
+      const app = makeMultiRootPathApp(true);
+      const r1 = await request(app, '/deep');
+      expect(r1.status).toBe(200);
+      expect(JSON.parse(r1.body)).toEqual({ from: 'gamma' });
+
+      const r2 = await request(app, '/beta/item');
+      expect(r2.status).toBe(200);
+      expect(JSON.parse(r2.body)).toEqual({ from: 'beta' });
+    });
+  });
+
+  describe('Deeply nested @Path("/") chains', () => {
+    it('works in Express mode', async () => {
+      const res = await request(makeDeepRootPathApp(false), '/leaf');
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({ from: 'deep' });
+    });
+
+    it('works in flat mode', async () => {
+      const res = await request(makeDeepRootPathApp(true), '/leaf');
+      expect(res.status).toBe(200);
+      expect(JSON.parse(res.body)).toEqual({ from: 'deep' });
     });
   });
 

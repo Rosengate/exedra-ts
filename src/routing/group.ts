@@ -219,7 +219,11 @@ export class Group {
 
       const childGroup: Group | undefined = route.properties._childGroup;
       const routePath = route.path || '';
-      const fullPath = effectiveBase + (routePath ? '/' + routePath.replace(/^\//, '') : '');
+      const fullPath =
+        (effectiveBase + (routePath ? '/' + routePath.replace(/^\//, '') : '')).replace(
+          /\/+/g,
+          '/',
+        ) || '/';
 
       if (childGroup) {
         results.push(...childGroup.listRoutes(fullPath, this.baseName || baseName));
@@ -264,7 +268,7 @@ export class Group {
 
       const childGroup: Group | undefined = route.properties._childGroup;
       const routePath = route.path || '';
-      const fullPath = prefix + '/' + routePath.replace(/^\//, '');
+      const fullPath = (prefix + '/' + routePath.replace(/^\//, '')).replace(/\/+/g, '/') || '/';
 
       if (childGroup) {
         childGroup._registerRoutesFlat(router, fullPath);
@@ -422,19 +426,21 @@ export class Group {
 
     // Wrap middleware + handler in an onion-style chain
     const allHandlers = handlers;
-    return [(req: express.Request, res: express.Response, next: express.NextFunction) => {
-      runMiddlewareChain(allHandlers, req, res)
-        .then(() => {
-          if (responseSender && !(res as any).headersSent) {
-            responseSender(req, res, next);
-          }
-        })
-        .catch((err) => {
-          if (!(res as any).headersSent && !(res as any).writableEnded) {
-            next(err);
-          }
-        });
-    }];
+    return [
+      (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        runMiddlewareChain(allHandlers, req, res)
+          .then(() => {
+            if (responseSender && !(res as any).headersSent) {
+              responseSender(req, res, next);
+            }
+          })
+          .catch((err) => {
+            if (!(res as any).headersSent && !(res as any).writableEnded) {
+              next(err);
+            }
+          });
+      },
+    ];
   }
 }
 
@@ -473,7 +479,10 @@ function runMiddlewareChain(
               }
               const currentValue = (req as any)._exedra_result;
               if (nextPromise) {
-                nextPromise.then(() => resolve(currentValue), () => resolve(currentValue));
+                nextPromise.then(
+                  () => resolve(currentValue),
+                  () => resolve(currentValue),
+                );
               } else if (!nextCalled) {
                 nextFn().then(() => resolve(currentValue), reject);
               } else {
