@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import express from 'express';
 import http from 'http';
-import { Controller, Path, Get, createExedra } from '../src';
+import { Controller, Path, Get, Res, createExedra } from '../src';
 
 function streamRequest(
   app: express.Application,
@@ -104,6 +104,83 @@ describe('Streaming support', () => {
     // If the framework had called res.json(), the body would be wrapped in JSON
     // (e.g. "\"chunk-1\\nchunk-2\\nchunk-3\\n\"") or the response would have
     // Content-Type: application/json. Verify it's plain text.
+    expect(res.headers['content-type']).toBe('text/plain');
+    expect(body).toBe('chunk-1\nchunk-2\nchunk-3\n');
+    expect(body).not.toContain('"');
+  });
+});
+
+// ─── @Res() decorator injection ──────────────────────────────────────────────
+
+@Path('/stream-decorated')
+class DecoratedStreamController extends Controller {
+  @Get('/raw')
+  getRaw(@Res() res: express.Response) {
+    res.setHeader('Content-Type', 'text/plain');
+    res.write('chunk-1\n');
+    res.write('chunk-2\n');
+    res.write('chunk-3\n');
+    res.end();
+  }
+
+  @Get('/sse')
+  getSse(@Res() res: express.Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.write('data: event-1\n\n');
+    res.write('data: event-2\n\n');
+    res.write('data: event-3\n\n');
+    res.write('data: [DONE]\n\n');
+    res.end();
+  }
+}
+
+class DecoratedRootController extends Controller {
+  groupStreamDecorated() {
+    return DecoratedStreamController;
+  }
+}
+
+function buildDecoratedApp() {
+  const app = express();
+  createExedra(app, { controller: DecoratedRootController });
+  return app;
+}
+
+describe('Streaming with @Res() decorator', () => {
+  it('raw chunked: all chunks arrive in order', async () => {
+    const app = buildDecoratedApp();
+    const { chunks } = await streamRequest(app, '/stream-decorated/raw');
+    const body = Buffer.concat(chunks).toString();
+    expect(body).toBe('chunk-1\nchunk-2\nchunk-3\n');
+  });
+
+  it('raw chunked: status is 200', async () => {
+    const app = buildDecoratedApp();
+    const { res } = await streamRequest(app, '/stream-decorated/raw');
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('SSE: all events arrive in order with [DONE]', async () => {
+    const app = buildDecoratedApp();
+    const { chunks } = await streamRequest(app, '/stream-decorated/sse');
+    const body = Buffer.concat(chunks).toString();
+    const lines = body.split('\n').filter((l) => l.startsWith('data:'));
+    expect(lines).toEqual(['data: event-1', 'data: event-2', 'data: event-3', 'data: [DONE]']);
+  });
+
+  it('SSE: correct content-type and cache-control headers', async () => {
+    const app = buildDecoratedApp();
+    const { res } = await streamRequest(app, '/stream-decorated/sse');
+    expect(res.headers['content-type']).toBe('text/event-stream');
+    expect(res.headers['cache-control']).toBe('no-cache');
+  });
+
+  it('no double-send: framework skips res.json with @Res() injected', async () => {
+    const app = buildDecoratedApp();
+    const { res, chunks } = await streamRequest(app, '/stream-decorated/raw');
+    const body = Buffer.concat(chunks).toString();
     expect(res.headers['content-type']).toBe('text/plain');
     expect(body).toBe('chunk-1\nchunk-2\nchunk-3\n');
     expect(body).not.toContain('"');

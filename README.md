@@ -693,7 +693,52 @@ getUser(db: Database, cache: Cache, @Param('id') id: string) {
 }
 ```
 
-**Resolution priority**: `@Param`/`@Body`/etc decorators > named auto-inject > type-based DI > `undefined`
+**Resolution priority**: `@Param`/`@Body`/etc decorators > named auto-inject > type-based DI > `undefined` > Express fallback
+
+### Express Fallback (positional)
+
+When no decorator, named auto-inject, or type-based DI matches a parameter slot, the framework falls back to Express's positional `(req, res, next)` arguments:
+
+```typescript
+class StreamController extends Controller {
+  @Get('/raw')
+  getRaw(_req: express.Request, res: express.Response) {
+    // No @Req/@Res decorators, no container registration for Request/Response.
+    // Wireman reads design:paramtypes → [Request, Response], can't resolve → [undefined, undefined].
+    // Express fallback fills: slot 0 → req, slot 1 → res.
+    res.setHeader('Content-Type', 'text/plain');
+    res.write('chunk-1\n');
+    res.end();
+  }
+}
+```
+
+**How it works**: TypeScript's `emitDecoratorMetadata` emits `design:paramtypes` for each parameter. `Wireman.resolveTypes()` tries to resolve each type from the Container — if it can't (e.g., `express.Request` and `express.Response` are never registered), it returns `undefined` for that slot. The Express fallback then fills remaining `undefined` slots positionally from `[req, res, next]`:
+
+```
+Parameter order:  [0]           [1]           [2]
+Express args:      req           res           next
+Wireman output:    undefined     undefined     (not present)
+After fallback:    req           res           next
+```
+
+This means:
+
+- **Parameter names don't matter** — `_req`, `res`, `r`, `request` all resolve the same way
+- **Only position matters** — slot 0 is always `req`, slot 1 is always `res`, slot 2 is always `next`
+- **Decorators take priority** — if you use `@Req()` or `@Res()`, the decorator resolves the value and the fallback skips that slot
+- **Works without explicit imports** — you don't need `import express from 'express'` if you only use positional params
+
+```typescript
+// All of these are equivalent — position determines resolution:
+getUser(req: any, res: any, next: any) {}   // slot 0 → req, slot 1 → res, slot 2 → next
+getUser(_req: express.Request, res: express.Response) {}  // same: slot 0 → req, slot 1 → res
+getUser(r: any, response: any) {}            // same: slot 0 → req, slot 1 → res
+
+// Decorators override specific slots:
+getUser(@Param('id') id: string, res: express.Response) {}  // slot 0 → decorator, slot 1 → res
+getUser(@Param('id') id: string, @Res() res: express.Response) {}  // both from decorators
+```
 
 **Requirements**:
 
