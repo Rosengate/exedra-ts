@@ -26,55 +26,52 @@ Global middleware: request logging, CORS headers, `express.json()`, `express.url
 ## Subrouting Hierarchy
 
 ```
-RootController
-├── groupApis()    → ApisController       ((@Path '/apis'))
-│       [middlewareErrorHandling, middlewareDataWrapping]
-│   ├── groupUsers()    → UsersController       ((@Path '/users'), @Tag 'api')
-│   │       [middlewareAuth, middlewareRateLimit]
-│   │   ├── GET    getUsers()
-│   │   ├── POST    storeUser()  [@Validation]
-│   │   └── groupUserApi()    → UserApiController       ((@Path '/:user-id'))
-│   │       ├── GET /:id   getUser()  [@Transformer]
-│   │       ├── POST    post()  [@Validation]
-│   │       └── DELETE /:id   deleteUser()
-│   ├── groupPost()    → PostController       ((@Path '/posts'), @Tag 'api')
-│   │       [middlewareAuth, middlewareLog]
-│   │   ├── GET    getPosts()
-│   │   ├── GET /:id   getPost()  [@Transformer]
-│   │   ├── POST    storePost()  [@Validation]
-│   │   └── PATCH /:id   patchPost()
-│   ├── groupAdmin()    → AdminController       ((@Path '/admin'), @Name 'admin')
-│   │       [middlewareAuth, middlewareLog]
-│   │   ├── GET /admin-index   getAdminIndex()
-│   │   ├── groupAdminSettings()    → AdminSettingsController       ((@Path '/settings'))
-│   │   │       [middlewareAdminOnly]
-│   │   │   ├── GET    getSettings()
-│   │   │   ├── PUT    updateSettings()
-│   │   │   ├── GET    get404()  [@FailRoute]
-│   │   │   └── groupTerminalSettingsApi()    → TerminalSettingsApiController       ((@Path '/terminal'))
-│   │   │       └── GET    get()
-│   │   └── groupAdminStats()    → AdminStatsController       ((@Path '/stats'), @Name 'stats')
-│   │       └── GET    getStats()
-│   ├── groupHealth()    → HealthController       ((@Path '/health'))
-│   │   └── GET    get()
-│   ├── groupDevices()    → DevicesController       ((@Path '/devices'))
-│   │   ├── GET    getAll()
-│   │   ├── GET /:device   getDevice()
-│   │   ├── POST    createDevice()
-│   │   ├── GET /:device/settings   getSettings()
-│   │   ├── GET /:device/meta   getMeta()
-│   │   └── groupDeviceScreens()    → DeviceScreensController       ((@Path '/:deviceId/screens'))
-│   │           [middlewareAuth]
-│   │       ├── GET /:screenId   get()
-│   │       └── groupDeviceScreenTests()    → DeviceScreenTests       ((@Path '/:screenId/tests'))
-│   │           └── GET    get()
-│   └── groupProfile()    → ProfileController       ((@Path '/profile'))
-│           [middleware]
-│       ├── POST /:id   postProfile()  [@Validation]
-│       ├── GET    getProfile()
-│       └── GET /:id   getProfileById()
-└── groupWeb()    → WebController       ((@Path '/'))
-    └── GET    landing()
+RootController (/)
+├── ApisController (/apis)
+│   ├── UsersController (/users)
+│   │   ├── GET  /  getUsers()
+│   │   ├── POST /  storeUser()
+│   │   └── UserApiController (/:user-id)
+│   │       ├── GET    /:id  getUser()
+│   │       ├── POST   /     post()
+│   │       └── DELETE /:id  deleteUser()
+│   ├── PostController (/posts)
+│   │   ├── GET   /     getPosts()
+│   │   ├── GET   /:id  getPost()
+│   │   ├── POST  /     storePost()
+│   │   └── PATCH /:id  patchPost()
+│   ├── AdminController (/admin)
+│   │   ├── GET /admin-index  getAdminIndex()
+│   │   ├── AdminSettingsController (/settings)
+│   │   │   ├── GET /  getSettings()
+│   │   │   ├── PUT /  updateSettings()
+│   │   │   ├── GET /  get404()
+│   │   │   └── TerminalSettingsApiController (/terminal)
+│   │   │       └── GET /  get()
+│   │   └── AdminStatsController (/stats)
+│   │       └── GET /  getStats()
+│   ├── HealthController (/health)
+│   │   └── GET /  get()
+│   ├── DevicesController (/devices)
+│   │   ├── GET  /                  getAll()
+│   │   ├── GET  /:device           getDevice()
+│   │   ├── POST /                  createDevice()
+│   │   ├── GET  /:device/settings  getSettings()
+│   │   ├── GET  /:device/meta      getMeta()
+│   │   └── DeviceScreensController (/:deviceId/screens)
+│   │       ├── GET /:screenId  get()
+│   │       └── DeviceScreenTests (/:screenId/tests)
+│   │           └── GET /  get()
+│   ├── ProfileController (/profile)
+│   │   ├── POST /:id  postProfile()
+│   │   ├── GET  /     getProfile()
+│   │   └── GET  /:id  getProfileById()
+│   └── SseApiController (/sse)
+│       ├── POST /streaming        postStreaming()
+│       └── POST /async-streaming  postAsyncStreaming()
+└── WebController (/)
+    ├── GET /sse  getSse()
+    └── GET /     landing()
 ```
 
 ## Route Table
@@ -106,6 +103,9 @@ RootController
 | POST | /apis/profile/:id | ProfileController | postProfile() | apis.profile.post-profile |
 | GET | /apis/profile | ProfileController | getProfile() | apis.profile.get-profile |
 | GET | /apis/profile/:id | ProfileController | getProfileById() | apis.profile.get-profile-by-id |
+| POST | /apis/sse/streaming | SseApiController | postStreaming() | apis.streaming.post-streaming |
+| POST | /apis/sse/async-streaming | SseApiController | postAsyncStreaming() | apis.streaming.post-async-streaming |
+| GET | /sse | WebController | getSse() | web.get-sse |
 | GET | / | WebController | landing() | web.landing |
 
 ## Controller Reference
@@ -144,7 +144,7 @@ RootController
 - **File:** `examples/controllers/ApisController.ts`
 - **Base path:** `/apis`
 - **Middleware:** `middlewareErrorHandling`, `middlewareDataWrapping`
-- **Subrouting:** `UsersController`, `PostController`, `AdminController`, `HealthController`, `DevicesController`, `ProfileController`
+- **Subrouting:** `UsersController`, `PostController`, `AdminController`, `HealthController`, `DevicesController`, `ProfileController`, `SseApiController`
 
 ### DevicesController
 
@@ -205,6 +205,14 @@ RootController
   - `GET ` `getProfile()` — @Inject('User'), @Ctx()
   - `GET /:id` `getProfileById()` — @Param('id'), @Inject('User')
 
+### SseApiController
+
+- **File:** `examples/controllers/apis/SseApiController.ts`
+- **Base path:** `/sse`
+- **Routes:**
+  - `POST /streaming` `postStreaming()` — @Req(), @Res()
+  - `POST /async-streaming` `postAsyncStreaming()` — @Req(), @Res()
+
 ### TerminalSettingsApiController
 
 - **File:** `examples/controllers/apis/admin/settings/TerminalSettingsApiController.ts`
@@ -216,6 +224,7 @@ RootController
 
 - **File:** `examples/controllers/apis/user/UserApiController.ts`
 - **Base path:** `/:user-id`
+- **Middleware:** `middleware`
 - **Routes:**
   - `GET /:id` `getUser()` — @Transformer(UserTransformer)
   - `POST ` `post()` — @Validation({"name":"required","email":"required|email"})
@@ -236,7 +245,6 @@ RootController
 
 | Decorator | Demonstrated In | Purpose |
 |-----------|----------------|---------|
-| `@Middleware` | RootController | Register middleware |
 | `@Path` | ApisController | Set base path |
 | `@Path` | UsersController | Set base path |
 | `@Tag` | UsersController | Tag all routes |
@@ -300,5 +308,11 @@ RootController
 | `@Get` | ProfileController | Register route |
 | `@Ctx` | ProfileController | Inject ctx |
 | `@Param` | ProfileController | Inject param |
+| `@Path` | SseApiController | Set base path |
+| `@Post` | SseApiController | Register route |
+| `@Path (method)` | SseApiController | Set route path |
+| `@Req` | SseApiController | Inject req |
+| `@Res` | SseApiController | Inject res |
 | `@Path` | WebController | Set base path |
 | `@Get` | WebController | Register route |
+| `@Path (method)` | WebController | Set route path |

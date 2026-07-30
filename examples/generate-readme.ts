@@ -287,7 +287,7 @@ function buildHierarchyTree(lines: string[], controllers: Map<string, Controller
   const root = controllers.get('RootController');
   if (!root) return;
 
-  lines.push('RootController');
+  lines.push('RootController (/)');
 
   const rootChildren = findChildControllers(root, controllers);
   for (let i = 0; i < rootChildren.length; i++) {
@@ -310,31 +310,8 @@ function renderSubtree(
   const connector = isLast ? '└──' : '├──';
   const indent = parentIndent + (isLast ? '    ' : '│   ');
 
-  const pathStr = info.classMeta.path ? ` (@Path '${info.classMeta.path}')` : '';
-  const tagStr = info.classMeta.tag ? `, @Tag '${info.classMeta.tag}'` : '';
-  const nameStr = info.classMeta.name ? `, @Name '${info.classMeta.name}'` : '';
-  const metaStr = (pathStr + tagStr + nameStr).trim();
-
-  // Find the group method name that routes to this controller
-  const parentInfo = findParentController(controllerName, controllers);
-  let groupName = controllerName.replace(/Controller$/, '');
-  if (parentInfo) {
-    // Infer the group* method name from the childControllers list order
-    const idx = parentInfo.childControllers.indexOf(controllerName);
-    if (idx >= 0) {
-      // Try to find a matching group method in parent's methods or just use convention
-      groupName = 'group' + controllerName.replace(/Controller$/, '');
-    }
-  }
-
-  lines.push(
-    `${parentIndent}${connector} ${groupName}()    → ${controllerName}${metaStr ? '       (' + metaStr + ')' : ''}`,
-  );
-
-  // Show middleware
-  if (info.middlewareNames.length > 0) {
-    lines.push(`${indent}    [${info.middlewareNames.join(', ')}]`);
-  }
+  const pathStr = info.classMeta.path || '/';
+  lines.push(`${parentIndent}${connector} ${controllerName} (${pathStr})`);
 
   // Show routes
   if (info.methods.length > 0) {
@@ -342,17 +319,17 @@ function renderSubtree(
     const totalItems = info.methods.length + children.length;
     let itemIdx = 0;
 
+    const maxVerbLen = Math.max(...info.methods.map((m) => (m.httpVerb ?? '').length));
+    const maxPathLen = Math.max(...info.methods.map((m) => (m.routePath || '/').length));
+
     for (const m of info.methods) {
       itemIdx++;
       const isLastItem = itemIdx >= totalItems;
       const routeConnector = isLastItem ? '└──' : '├──';
-      const methodPath = m.routePath || '';
-      const extras: string[] = [];
-      if (m.methodMeta.asFailRoute) extras.push('@FailRoute');
-      if (m.methodMeta.states?.['exedra:transformer']) extras.push('@Transformer');
-      if (m.methodMeta.states?.['exedra:validation']) extras.push('@Validation');
-      const extraStr = extras.length > 0 ? `  [${extras.join(', ')}]` : '';
-      lines.push(`${indent}${routeConnector} ${m.httpVerb} ${methodPath}   ${m.name}()${extraStr}`);
+      const methodPath = m.routePath || '/';
+      const verb = (m.httpVerb ?? '').padEnd(maxVerbLen);
+      const paddedPath = methodPath.padEnd(maxPathLen);
+      lines.push(`${indent}${routeConnector} ${verb} ${paddedPath}  ${m.name}()`);
     }
 
     // Recurse into child controllers
