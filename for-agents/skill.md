@@ -134,17 +134,19 @@ class UserController extends Controller {
 }
 ```
 
+> **Convention:** Verb prefix already determines the HTTP method — use `@Path` for the route path, not `@Get`/`@Post`. `@Get('/profile') getProfile()` is redundant; `@Path('/profile') getProfile()` is preferred.
+
 ### Explicit Decorators
 
-For routes that don't follow naming conventions:
+When a route name doesn't map to an HTTP verb, use explicit decorators:
 
 ```typescript
-class SearchController extends Controller {
-  @Get('/search')
-  search() {}
+class AuthController extends Controller {
+  @Post('/login')
+  login() {}
 
-  @Post('/bulk-delete')
-  bulkDelete() {}
+  @Get('/whoami')
+  whoami() {}
 }
 ```
 

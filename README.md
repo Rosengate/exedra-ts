@@ -243,17 +243,22 @@ class UserController extends Controller {
 
 Verb-only methods (`get()`, `post()`) map to the group's base path. Methods with a suffix (`getProducts()`) use the suffix for the route name but still need `@Path` for the path.
 
+> **Recommended convention:** If the method name already starts with a verb prefix (`get*`, `post*`, `put*`, `delete*`, `patch*`), use `@Path` instead of `@Get`/`@Post`/etc. The prefix already determines the HTTP method — `@Path` is more descriptive for what you're actually setting (the route path).
+
 ### Explicit Decorators
 
-For routes that don't follow the naming convention, use explicit decorators:
+When a route name doesn't map to an HTTP verb, use explicit decorators:
 
 ```typescript
-class SearchController extends Controller {
-  @Get('/search')
-  getSearch() {} // GET /search
+class AuthController extends Controller {
+  @Post('/login')
+  login() {} // POST /auth/login
 
-  @Post('/bulk-delete')
-  postBulkDelete() {} // POST /bulk-delete
+  @Get('/whoami')
+  whoami() {} // GET /auth/whoami
+
+  @Post('/logout')
+  logout() {} // POST /auth/logout
 }
 ```
 
